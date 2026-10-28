@@ -352,9 +352,9 @@ export function Spinner({ className, label = 'Loading' }: { className?: string; 
   return <LoaderCircle className={cn('size-4 animate-spin text-ink-3', className)} aria-label={label} role="status" />;
 }
 
-export function Kbd({ children }: { children: ReactNode }) {
+export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <kbd className="rounded border border-line-strong bg-raised px-1 py-px font-mono text-[11px] leading-none text-ink-2">{children}</kbd>
+    <kbd className={cn('rounded border border-line-strong bg-raised px-1 py-px font-mono text-[11px] leading-none text-ink-2', className)}>{children}</kbd>
   );
 }
 

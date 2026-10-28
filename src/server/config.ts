@@ -17,6 +17,10 @@ const schema = z.object({
   /** Programs executed in parallel against the runner. */
   RUNNER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
 
+  /** Per-user limits on the generic rate limiter (contests add their own rules). */
+  SUBMIT_RATE_PER_MINUTE: z.coerce.number().int().min(1).default(10),
+  RUN_RATE_PER_MINUTE: z.coerce.number().int().min(1).default(30),
+
   ADMIN_USERNAME: z.string().min(2).default('admin'),
   ADMIN_PASSWORD: z.string().min(8).default('codr-admin'),
   ADMIN_EMAIL: z.string().default('admin@codr.local'),

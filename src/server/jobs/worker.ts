@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
-import { runs } from '../db/schema';
+import { runs, submissions } from '../db/schema';
 import type { JobContext } from './context';
+import { judgeSubmission } from './judge';
 import { processRun } from './runs';
 
 /**
@@ -23,6 +24,7 @@ export class JobWorker {
   /** Jobs left "running" by a crash are put back in the queue. Single web process assumed. */
   async recover() {
     await this.ctx.db.execute(sql`UPDATE runs SET status = 'queued', started_at = NULL WHERE status = 'running'`);
+    await this.ctx.db.execute(sql`UPDATE submissions SET status = 'queued', started_at = NULL WHERE status = 'running'`);
   }
 
   start(intervalMs = 1000) {
@@ -65,6 +67,18 @@ export class JobWorker {
     return run ?? null;
   }
 
+  private async claimSubmission() {
+    const now = this.ctx.clock.now();
+    const res = await this.ctx.db.execute<{ id: number }>(sql`
+      UPDATE submissions SET status = 'running', started_at = ${now}
+      WHERE id = (SELECT id FROM submissions WHERE status = 'queued' ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
+      RETURNING id`);
+    const id = res.rows[0]?.id;
+    if (id == null) return null;
+    const [sub] = await this.ctx.db.select().from(submissions).where(eq(submissions.id, id));
+    return sub ?? null;
+  }
+
   private track(job: Promise<void>) {
     this.active++;
     const tracked = job
@@ -87,6 +101,11 @@ export class JobWorker {
           this.track(processRun(this.ctx, run));
           continue;
         }
+        const sub = await this.claimSubmission();
+        if (sub) {
+          this.track(judgeSubmission(this.ctx, sub));
+          continue;
+        }
         break;
       }
     } catch (err) {
@@ -102,7 +121,9 @@ export class JobWorker {
     for (;;) {
       await this.kick();
       await Promise.allSettled([...this.inFlight]);
-      const res = await this.ctx.db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM runs WHERE status IN ('queued', 'running')`);
+      const res = await this.ctx.db.execute<{ n: number }>(sql`
+        SELECT ((SELECT count(*) FROM runs WHERE status IN ('queued', 'running'))
+              + (SELECT count(*) FROM submissions WHERE status IN ('queued', 'running')))::int AS n`);
       if ((res.rows[0]?.n ?? 0) === 0 && this.active === 0) return;
       if (Date.now() > deadline) throw new Error('drain timed out');
       await new Promise((r) => setTimeout(r, 25));

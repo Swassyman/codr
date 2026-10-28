@@ -145,6 +145,74 @@ export interface StatementDTO {
   memoryLimitMb: number;
 }
 
+/** One judged case as a participant sees it: never inputs or outputs. */
+export interface TestResultDTO {
+  index: number;
+  label: string;
+  sample: boolean;
+  hidden: boolean;
+  verdict: string;
+  timeMs: number | null;
+  memoryKb: number | null;
+  points: number;
+  maxPoints: number;
+  message?: string;
+}
+
+export interface SubmissionDTO {
+  id: number;
+  questionId: number;
+  contestId: number | null;
+  language: LanguageId;
+  status: JobStatus;
+  queuePosition: number | null;
+  /** Overall verdict; when hidden results are withheld, the verdict over visible cases only. */
+  verdict: string | null;
+  score: number | null;
+  maxScore: number;
+  passed: number;
+  total: number;
+  timeMs: number | null;
+  memoryKb: number | null;
+  compileOutput: string | null;
+  /** Null when the contest shows only a summary. */
+  results: TestResultDTO[] | null;
+  /** Hidden-test results are released after the contest. */
+  withheld: boolean;
+  receivedAt: string;
+  judgedAt: string | null;
+  isAuto: boolean;
+  code?: string;
+}
+
+export interface DraftDTO {
+  language: LanguageId;
+  code: string;
+  updatedAt: string;
+}
+
+/** Everything the solve page needs for one question. */
+export interface WorkspaceQuestionDTO extends StatementDTO {
+  id: number;
+  slug: string;
+  tags: string[];
+  languages: LanguageId[];
+  starterCode: Partial<Record<LanguageId, string>>;
+  drafts: DraftDTO[];
+  points: number;
+}
+
+export interface PracticeQuestionDTO {
+  id: number;
+  slug: string;
+  title: string;
+  difficulty: Difficulty | null;
+  rating: number | null;
+  tags: string[];
+  solved: boolean;
+  attempted: boolean;
+}
+
 export interface ContestSummaryDTO {
   id: number;
   name: string;

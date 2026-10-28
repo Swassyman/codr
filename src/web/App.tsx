@@ -13,6 +13,8 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const RunnerPage = lazy(() => import('./pages/admin/RunnerPage'));
 const QuestionsPage = lazy(() => import('./pages/manage/QuestionsPage'));
 const QuestionEditorPage = lazy(() => import('./pages/manage/question-editor/QuestionEditorPage'));
+const PracticeListPage = lazy(() => import('./pages/practice/PracticeListPage'));
+const PracticeSolvePage = lazy(() => import('./pages/practice/PracticeSolvePage'));
 
 function PageFallback() {
   return (
@@ -70,6 +72,22 @@ export function App() {
           element={
             <RequireRole roles={['admin', 'creator']}>
               <QuestionEditorPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/practice"
+          element={
+            <RequireRole>
+              <PracticeListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/practice/:slug"
+          element={
+            <RequireRole>
+              <PracticeSolvePage />
             </RequireRole>
           }
         />

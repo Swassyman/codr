@@ -46,7 +46,13 @@ export async function createTestContext(opts: { runner?: Runner; clock?: FakeClo
   await runMigrations(db);
   const clock = opts.clock ?? new FakeClock('2030-01-15T10:00:00Z');
   const runner = opts.runner ?? new FakeRunner();
-  const config = loadConfig({ NODE_ENV: 'test', DATABASE_URL: TEST_DATABASE_URL, RUNNER_CONCURRENCY: '4' });
+  const config = loadConfig({
+    NODE_ENV: 'test',
+    DATABASE_URL: TEST_DATABASE_URL,
+    RUNNER_CONCURRENCY: '4',
+    SUBMIT_RATE_PER_MINUTE: '1000',
+    RUN_RATE_PER_MINUTE: '1000',
+  });
   const services = createServices({ config, db, runner, clock: clock as Clock, log: pino({ level: 'silent' }) });
   const app = await buildApp(services);
   await app.ready();

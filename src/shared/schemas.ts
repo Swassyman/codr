@@ -127,6 +127,25 @@ export const referenceRunSchema = z.object({
   code: codeSchema.min(1, 'Paste a reference solution first.'),
 });
 
+// ---------------------------------------------------------------- Solving
+
+export const draftSchema = z.object({
+  language: languageSchema,
+  code: codeSchema,
+});
+
+export const solveRunSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('samples'), language: languageSchema, code: codeSchema.min(1, 'Write some code first.') }),
+  z.object({ mode: z.literal('custom'), language: languageSchema, code: codeSchema.min(1, 'Write some code first.'), input: z.string().max(MAX_CUSTOM_INPUT) }),
+]);
+
+export const submitSchema = z.object({
+  language: languageSchema,
+  code: codeSchema.min(1, 'Write some code first.'),
+});
+
+export const idempotencyKeySchema = z.string().trim().min(8).max(64).optional();
+
 export const publishSchema = z.object({
   /** Publish even though validation is missing, stale or failing. */
   acknowledgeValidation: z.boolean().optional(),
