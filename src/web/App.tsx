@@ -11,6 +11,8 @@ import LoginPage from './pages/LoginPage';
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const RunnerPage = lazy(() => import('./pages/admin/RunnerPage'));
+const QuestionsPage = lazy(() => import('./pages/manage/QuestionsPage'));
+const QuestionEditorPage = lazy(() => import('./pages/manage/question-editor/QuestionEditorPage'));
 
 function PageFallback() {
   return (
@@ -52,6 +54,22 @@ export function App() {
           element={
             <RequireRole roles={['admin']}>
               <RunnerPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/questions"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <QuestionsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/questions/:id"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <QuestionEditorPage />
             </RequireRole>
           }
         />

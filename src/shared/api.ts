@@ -1,5 +1,17 @@
 import type { LanguageId } from './languages';
-import type { ExecutionSummary, JobStatus, Role } from './types';
+import type {
+  CheckerConfig,
+  Difficulty,
+  ExecutionSummary,
+  JobStatus,
+  LanguageLimits,
+  ReferenceSolution,
+  Role,
+  Sample,
+  ScoringMode,
+  SourceInfo,
+  ValidationReport,
+} from './types';
 
 // Response shapes shared by the API and the web client.
 
@@ -49,6 +61,88 @@ export interface RunDTO {
   createdAt: string;
   finishedAt: string | null;
   queuePosition: number | null;
+}
+
+export type ValidationState = 'missing' | 'stale' | 'passed' | 'failed';
+
+export interface QuestionListItemDTO {
+  id: number;
+  slug: string;
+  title: string;
+  difficulty: Difficulty | null;
+  rating: number | null;
+  tags: string[];
+  status: 'draft' | 'published';
+  practice: boolean;
+  testCount: number;
+  usedIn: number;
+  validationState: ValidationState;
+  updatedAt: string;
+  authorName: string | null;
+  canEdit: boolean;
+  source: { adapter: string; url: string | null } | null;
+}
+
+export interface QuestionEditorDTO {
+  id: number;
+  slug: string;
+  title: string;
+  difficulty: Difficulty | null;
+  rating: number | null;
+  tags: string[];
+  statement: string;
+  inputFormat: string;
+  outputFormat: string;
+  constraints: string[];
+  samples: Sample[];
+  notes: string;
+  timeLimitMs: number;
+  memoryLimitMb: number;
+  languageLimits: LanguageLimits;
+  allowedLanguages: LanguageId[];
+  starterCode: Partial<Record<LanguageId, string>>;
+  points: number;
+  scoringMode: ScoringMode;
+  checker: CheckerConfig;
+  referenceSolution: ReferenceSolution | null;
+  status: 'draft' | 'published';
+  practice: boolean;
+  source: SourceInfo | null;
+  validation: ValidationReport | null;
+  validationState: ValidationState;
+  updatedAt: string;
+  testCount: number;
+  usedIn: number;
+  canEdit: boolean;
+}
+
+export interface TestCaseDTO {
+  id: number;
+  position: number;
+  input: string;
+  expectedOutput: string;
+  /** True when input/output are previews of a large test; fetch the raw endpoint for all of it. */
+  truncated: boolean;
+  inputSize: number;
+  outputSize: number;
+  hidden: boolean;
+  points: number | null;
+  label: string | null;
+  groupName: string | null;
+}
+
+/** What participants see of a question (never tests or the reference solution). */
+export interface StatementDTO {
+  title: string;
+  difficulty?: Difficulty | null;
+  statement: string;
+  inputFormat: string;
+  outputFormat: string;
+  constraints: string[];
+  samples: Sample[];
+  notes: string;
+  timeLimitMs: number;
+  memoryLimitMb: number;
 }
 
 export interface ContestSummaryDTO {

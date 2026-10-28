@@ -21,6 +21,7 @@ import { authRoutes } from './routes/auth';
 import { systemRoutes } from './routes/system';
 import { runRoutes } from './routes/runs';
 import { contestRoutes } from './routes/contests';
+import { manageQuestionRoutes } from './routes/manage-questions';
 
 export interface Services {
   config: Config;
@@ -50,8 +51,10 @@ const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 function resolveWebDist(config: Config) {
   if (config.WEB_DIST) return config.WEB_DIST;
   const here = path.dirname(fileURLToPath(import.meta.url));
+  // dist/server/main.js → dist/web; tsx from the repo → dist/web under cwd. Only a
+  // built SPA has an assets/ folder (src/web has an index.html too, but no build).
   const candidates = [path.resolve(here, '../web'), path.resolve(process.cwd(), 'dist/web')];
-  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) ?? null;
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')) && fs.existsSync(path.join(dir, 'assets'))) ?? null;
 }
 
 export async function buildApp(services: Services): Promise<FastifyInstance> {
@@ -147,6 +150,7 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
   await app.register(systemRoutes);
   await app.register(runRoutes);
   await app.register(contestRoutes);
+  await app.register(manageQuestionRoutes);
 
   const webDist = resolveWebDist(config);
   if (webDist) {

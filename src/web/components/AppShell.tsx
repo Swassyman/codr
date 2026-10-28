@@ -95,12 +95,12 @@ function UserMenu() {
   );
 }
 
-export function TopBar() {
+export function TopBar({ wide }: { wide?: boolean }) {
   const user = useUser();
   const staff = isStaffUser(user);
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex h-12 max-w-[1240px] items-center gap-4 px-4">
+    <header className="sticky top-0 z-30 border-b border-line bg-surface">
+      <div className={cn('mx-auto flex h-12 items-center gap-4 px-4', wide ? 'max-w-[1600px]' : 'max-w-[1240px]')}>
         <Wordmark />
         <nav aria-label="Main" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
           <NavItem to="/" end>
@@ -134,7 +134,7 @@ export function TopBar() {
 export function AppShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="min-h-dvh">
-      <TopBar />
+      <TopBar wide={wide} />
       <main className={cn('mx-auto px-4 py-8', wide ? 'max-w-[1600px]' : 'max-w-[1240px]')}>{children}</main>
     </div>
   );
