@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Codr tokens. Neutral graphite surfaces, one ultramarine ink accent, and
+ * verdict colours kept apart from the accent so "accent" never reads as "accepted".
+ */
+:root {
+  color-scheme: light;
+  --canvas: #f4f5f7;
+  --surface: #ffffff;
+  --raised: #edeff2;
+  --well: #f6f7f9;
+  --line: #dde0e6;
+  --line-strong: #bcc2cc;
+  --ink: #15171c;
+  --ink-2: #484e59;
+  --ink-3: #69707c;
+  --accent: #2b3bd6;
+  --accent-hover: #2130bd;
+  --accent-soft: #e8eafc;
+  --on-accent: #ffffff;
+  --ok: #157a4a;
+  --ok-soft: #e2f3ea;
+  --bad: #c12a20;
+  --bad-soft: #fbe6e4;
+  --warn: #965a00;
+  --warn-soft: #faefd9;
+  --mle: #a84a0c;
+  --mle-soft: #fbe9dd;
+  --re: #a0266d;
+  --re-soft: #f7e4ee;
+  --ce: #586174;
+  --ce-soft: #eceef2;
+  --shadow: 0 1px 2px rgb(21 23 28 / 0.06), 0 8px 24px -12px rgb(21 23 28 / 0.18);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #14161b;
+  --surface: #1a1d23;
+  --raised: #21252d;
+  --well: #171a1f;
+  --line: #2b303a;
+  --line-strong: #424957;
+  --ink: #e6e8ed;
+  --ink-2: #a8aeba;
+  --ink-3: #878e9a;
+  --accent: #8d9aff;
+  --accent-hover: #a3aeff;
+  --accent-soft: #23284a;
+  --on-accent: #0e1131;
+  --ok: #4fcb8d;
+  --ok-soft: #15302a;
+  --bad: #ff7b70;
+  --bad-soft: #3a1b1a;
+  --warn: #f0b046;
+  --warn-soft: #372a13;
+  --mle: #f59a62;
+  --mle-soft: #3a2318;
+  --re: #f07dbe;
+  --re-soft: #381a2c;
+  --ce: #a9b1bf;
+  --ce-soft: #262a32;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+}
+
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Modular scale (~1.2) on a 15px base. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.8rem;
+  --text-2xl: 1.6875rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2.0625rem;
+  --text-3xl--line-height: 2.5rem;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-mle: var(--mle);
+  --color-mle-soft: var(--mle-soft);
+  --color-re: var(--re);
+  --color-re-soft: var(--re-soft);
+  --color-ce: var(--ce);
+  --color-ce-soft: var(--ce-soft);
+  --shadow-pop: var(--shadow);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--canvas);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* Problem statements: rendered markdown + KaTeX. Kept to ~72ch for reading. */
+.statement {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  max-width: 72ch;
+}
+.statement > * + * {
+  margin-top: 0.85em;
+}
+.statement h1,
+.statement h2,
+.statement h3 {
+  font-weight: 650;
+  line-height: 1.3;
+  margin-top: 1.4em;
+}
+.statement h1 {
+  font-size: 1.25rem;
+}
+.statement h2 {
+  font-size: 1.125rem;
+}
+.statement h3 {
+  font-size: 1rem;
+}
+.statement ul,
+.statement ol {
+  padding-left: 1.4em;
+}
+.statement ul {
+  list-style: disc;
+}
+.statement ol {
+  list-style: decimal;
+}
+.statement li + li {
+  margin-top: 0.3em;
+}
+.statement a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.statement code {
+  font-size: 0.9em;
+  background: var(--raised);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.statement pre {
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.statement pre code {
+  background: none;
+  padding: 0;
+}
+.statement table {
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.statement th,
+.statement td {
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+}
+.statement blockquote {
+  border-left: 3px solid var(--line-strong);
+  padding-left: 0.9rem;
+  color: var(--ink-2);
+}
+.statement strong {
+  font-weight: 700;
+}
+.statement .katex {
+  font-size: 1.05em;
+}
+.statement .katex-display {
+  margin: 0.6em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Contest clock fuse: drains across the top edge of the workspace. */
+.fuse {
+  height: 3px;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 1s linear, background-color 0.3s;
+}
+.fuse[data-level="low"] {
+  background: var(--warn);
+}
+.fuse[data-level="critical"] {
+  background: var(--bad);
+}
+
+/* Native number inputs: hide spinners for a calmer form. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

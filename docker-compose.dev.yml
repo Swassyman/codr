@@ -1,0 +1,10 @@
+# Local development: exposes Postgres and the runner on localhost so the API can
+# run outside Docker with `npm run dev`.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db runner
+services:
+  db:
+    ports:
+      - "127.0.0.1:55432:5432"
+  runner:
+    ports:
+      - "127.0.0.1:2000:2000"

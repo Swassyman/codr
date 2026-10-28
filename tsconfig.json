@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": [
+    "src",
+    "scripts",
+    "tests",
+    "e2e",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "drizzle.config.ts",
+    "playwright.config.ts"
+  ]
+}
