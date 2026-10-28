@@ -20,6 +20,8 @@ const schema = z.object({
   /** Per-user limits on the generic rate limiter (contests add their own rules). */
   SUBMIT_RATE_PER_MINUTE: z.coerce.number().int().min(1).default(10),
   RUN_RATE_PER_MINUTE: z.coerce.number().int().min(1).default(30),
+  /** Sign-in attempts per address and account (a classroom behind one NAT can still log in). */
+  LOGIN_RATE_PER_MINUTE: z.coerce.number().int().min(1).default(10),
 
   ADMIN_USERNAME: z.string().min(2).default('admin'),
   ADMIN_PASSWORD: z.string().min(8).default('codr-admin'),

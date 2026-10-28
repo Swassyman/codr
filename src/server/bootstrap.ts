@@ -11,6 +11,7 @@ import { JobWorker } from './jobs/worker';
 import type { Runner } from './runner/types';
 import type { PistonSetup } from './runner/setup';
 import type { Services } from './app';
+import { ExpiryScheduler } from './services/scheduler';
 
 export function createLogger(config: Config): Logger {
   if (config.NODE_ENV === 'test') return pino({ level: 'silent' });
@@ -34,7 +35,8 @@ export function createServices(opts: {
     { db: opts.db, runner: opts.runner, pool, clock: opts.clock, events, log: opts.log },
     Math.max(2, opts.config.RUNNER_CONCURRENCY),
   );
-  return { ...opts, setup: opts.setup ?? null, events, pool, worker };
+  const scheduler = new ExpiryScheduler({ db: opts.db, clock: opts.clock, events, worker, log: opts.log });
+  return { ...opts, setup: opts.setup ?? null, events, pool, worker, scheduler };
 }
 
 /** Creates the first admin account from the environment when none exists. */

@@ -52,6 +52,7 @@ export async function createTestContext(opts: { runner?: Runner; clock?: FakeClo
     RUNNER_CONCURRENCY: '4',
     SUBMIT_RATE_PER_MINUTE: '1000',
     RUN_RATE_PER_MINUTE: '1000',
+    LOGIN_RATE_PER_MINUTE: '1000',
   });
   const services = createServices({ config, db, runner, clock: clock as Clock, log: pino({ level: 'silent' }) });
   const app = await buildApp(services);

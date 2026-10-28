@@ -11,6 +11,7 @@ import { useMediaQuery, modKey } from '../../lib/media';
 import { monaco } from '../../lib/monaco';
 import { useRun } from '../../lib/runs';
 import { useRuntimes } from '../../lib/runtimes';
+import { serverClock } from '../../lib/server-time';
 import { cn } from '../../lib/cn';
 import { ThemeToggle } from '../AppShell';
 import { CodeEditor, type MonacoEditor } from '../CodeEditor';
@@ -42,6 +43,8 @@ export interface WorkspaceProps {
   onPaste?: (chars: number) => void;
   /** Called when the server refuses work (time up, question locked). */
   onRefused?: (err: ApiError) => void;
+  /** Work deadline: the latest draft is saved just before it so the auto-submit has it. */
+  deadline?: string | null;
 }
 
 const draftText: Record<DraftState, string> = {
@@ -72,7 +75,7 @@ function pickLanguage(q: WorkspaceQuestionDTO, installed: Set<LanguageId>): Lang
   );
 }
 
-export function Workspace({ question, endpoints, scope, bar, barRight, fuse, locked, submissionLimit, onPaste, onRefused }: WorkspaceProps) {
+export function Workspace({ question, endpoints, scope, bar, barRight, fuse, locked, submissionLimit, onPaste, onRefused, deadline }: WorkspaceProps) {
   const wide = useMediaQuery('(min-width: 1024px)');
   const runtimes = useRuntimes();
   const connection = useConnectionState();
@@ -102,6 +105,20 @@ export function Workspace({ question, endpoints, scope, bar, barRight, fuse, loc
       // Not persisted; fine.
     }
   };
+
+  // Save the latest edits just before the deadline (the server keeps whatever it has by then).
+  const { setCode: saveCode, flush: flushDrafts } = drafts;
+  useEffect(() => {
+    if (!deadline || locked) return;
+    const wait = Date.parse(deadline) - serverClock.now() - 1500;
+    if (wait < 0) return;
+    const t = window.setTimeout(() => {
+      const model = editorRef.current?.getModel();
+      if (model) saveCode(language, model.getValue());
+      void flushDrafts();
+    }, wait);
+    return () => window.clearTimeout(t);
+  }, [deadline, locked, language, saveCode, flushDrafts]);
 
   const run = useRun(runId);
   const runBusy = runId != null && run.data?.status !== 'done' && run.data?.status !== 'failed';

@@ -146,6 +146,74 @@ export const submitSchema = z.object({
 
 export const idempotencyKeySchema = z.string().trim().min(8).max(64).optional();
 
+// ---------------------------------------------------------------- Contests
+
+const isoDate = z.iso.datetime({ offset: true, message: 'Enter a valid date and time.' });
+const optionalMinutes = (max: number) => z.number().int().min(1, 'At least 1 minute.').max(max).nullable();
+
+export const contestFieldsSchema = z.object({
+  name: z.string().trim().min(1, 'Name the contest.').max(160),
+  description: z.string().max(20_000),
+  startsAt: isoDate,
+  endsAt: isoDate,
+  visibility: z.enum(['public', 'invite', 'private']),
+  allowGuests: z.boolean(),
+  registrationOpen: z.boolean(),
+  allowedLanguages: z.array(languageSchema),
+  timingMode: z.enum(['per_question', 'fixed_window', 'personal_window']),
+  durationMinutes: optionalMinutes(7 * 24 * 60),
+  defaultQuestionMinutes: optionalMinutes(24 * 60),
+  viewOnce: z.boolean(),
+  sequential: z.boolean(),
+  maxSubmissionsPerQuestion: z.number().int().min(1).max(1000).nullable(),
+  maxRunsPerMinute: z.number().int().min(1).max(600).nullable(),
+  revealHidden: z.enum(['during', 'after']),
+  verdictDetail: z.enum(['per_test', 'summary']),
+  scoring: z.enum(['all_or_nothing', 'partial']),
+  penaltyMinutes: z.number().int().min(0).max(24 * 60).nullable(),
+  leaderboardEnabled: z.boolean(),
+  leaderboardFreezeMinutes: optionalMinutes(7 * 24 * 60),
+  recordIntegrity: z.boolean(),
+});
+
+export const contestPatchSchema = contestFieldsSchema.partial();
+export type ContestFields = z.infer<typeof contestFieldsSchema>;
+
+export const contestQuestionsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        questionId: z.number().int().positive(),
+        points: z.number().int().min(0).max(10_000).nullable(),
+        durationMinutes: optionalMinutes(24 * 60),
+      }),
+    )
+    .max(52, 'Use at most 52 questions.'),
+});
+
+export const joinSchema = z.object({
+  code: z.string().trim().min(4, 'Enter the contest code.').max(32),
+  displayName: displayNameSchema.optional(),
+});
+
+export const addParticipantSchema = z.object({
+  username: z.string().trim().min(1).max(64),
+});
+
+export const integrityBatchSchema = z.object({
+  events: z
+    .array(
+      z.object({
+        type: z.enum(['blur', 'focus', 'paste']),
+        at: isoDate,
+        questionId: z.number().int().positive().nullable().optional(),
+        chars: z.number().int().min(0).max(10_000_000).optional(),
+      }),
+    )
+    .min(1)
+    .max(200),
+});
+
 export const publishSchema = z.object({
   /** Publish even though validation is missing, stale or failing. */
   acknowledgeValidation: z.boolean().optional(),

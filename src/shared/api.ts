@@ -232,6 +232,155 @@ export interface ContestSummaryDTO {
   finishedAt: string | null;
 }
 
+export type TimingModeDTO = 'per_question' | 'fixed_window' | 'personal_window';
+
+export interface ContestRulesDTO {
+  timingMode: TimingModeDTO;
+  durationMinutes: number | null;
+  defaultQuestionMinutes: number | null;
+  viewOnce: boolean;
+  sequential: boolean;
+  maxSubmissionsPerQuestion: number | null;
+  maxRunsPerMinute: number | null;
+  revealHidden: 'during' | 'after';
+  verdictDetail: 'per_test' | 'summary';
+  scoring: 'all_or_nothing' | 'partial';
+  penaltyMinutes: number | null;
+  recordIntegrity: boolean;
+  leaderboardEnabled: boolean;
+}
+
+export interface ContestLobbyDTO extends ContestRulesDTO {
+  id: number;
+  name: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  finalEndsAt: string;
+  visibility: 'public' | 'invite' | 'private';
+  registrationOpen: boolean;
+  phase: 'upcoming' | 'live' | 'ended';
+  questionCount: number;
+  serverTime: string;
+  isStaff: boolean;
+  canRegister: boolean;
+  participant: {
+    enteredAt: string | null;
+    finishedAt: string | null;
+    /** When this participant's work must stop (null until entered in personal-window mode). */
+    deadline: string | null;
+  } | null;
+}
+
+export type QuestionNavState = 'available' | 'open' | 'locked' | 'waiting';
+
+export interface ContestQuestionStateDTO {
+  questionId: number;
+  letter: string;
+  title: string;
+  points: number;
+  state: QuestionNavState;
+  reason: string | null;
+  reasonCode: string | null;
+  deadline: string | null;
+  durationMinutes: number | null;
+  firstViewedAt: string | null;
+  leftAt: string | null;
+  bestScore: number | null;
+  attempts: number;
+  submissionsUsed: number;
+}
+
+export interface ContestStateDTO {
+  serverTime: string;
+  entered: boolean;
+  finished: boolean;
+  /** Participation is over (time up, finished, or every question locked). */
+  over: boolean;
+  lock: { code: string; message: string } | null;
+  participantDeadline: string | null;
+  /** View-once: the question currently open, which leaving would lock. */
+  current: number | null;
+  questions: ContestQuestionStateDTO[];
+}
+
+export interface ContestQuestionDTO extends WorkspaceQuestionDTO {
+  letter: string;
+  deadline: string | null;
+  maxSubmissions: number | null;
+  submissionsUsed: number;
+}
+
+export interface ContestListItemDTO {
+  id: number;
+  name: string;
+  status: 'draft' | 'published';
+  startsAt: string;
+  endsAt: string;
+  timingMode: TimingModeDTO;
+  phase: 'upcoming' | 'live' | 'ended';
+  questionCount: number;
+  participantCount: number;
+}
+
+export interface ContestEditorDTO extends ContestRulesDTO {
+  id: number;
+  name: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  visibility: 'public' | 'invite' | 'private';
+  allowGuests: boolean;
+  registrationOpen: boolean;
+  allowedLanguages: LanguageId[];
+  leaderboardFreezeMinutes: number | null;
+  joinCode: string;
+  status: 'draft' | 'published';
+  started: boolean;
+  participantCount: number;
+  questions: {
+    questionId: number;
+    title: string;
+    slug: string;
+    status: 'draft' | 'published';
+    points: number | null;
+    questionPoints: number;
+    durationMinutes: number | null;
+    testCount: number;
+  }[];
+  problems: { path: string; message: string }[];
+}
+
+export interface StandingRowDTO {
+  rank: number;
+  participantId: number;
+  userId: number;
+  displayName: string;
+  username: string;
+  isGuest: boolean;
+  score: number;
+  penalty: number;
+  lastBestAt: string | null;
+  questions: { questionId: number; score: number; maxScore: number; attempts: number; solved: boolean; bestAt: string | null; penalty: number }[];
+}
+
+export interface LeaderboardDTO {
+  frozenAt: string | null;
+  questions: { questionId: number; letter: string; title: string }[];
+  rows: StandingRowDTO[];
+}
+
+export interface ContestResultsDTO {
+  contest: { id: number; name: string; timingMode: TimingModeDTO; recordIntegrity: boolean; penaltyMinutes: number | null };
+  questions: { questionId: number; letter: string; title: string; maxScore: number }[];
+  participants: (StandingRowDTO & {
+    enteredAt: string | null;
+    finishedAt: string | null;
+    integrity: { blurs: number; pastes: number; pastedChars: number };
+    views: { questionId: number; firstViewedAt: string; leftAt: string | null }[];
+  })[];
+}
+
 export interface RunnerStatusDTO {
   engine: string;
   reachable: boolean;

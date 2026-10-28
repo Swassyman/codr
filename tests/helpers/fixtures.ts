@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { DB } from '../../src/server/db';
-import { questions, testCases } from '../../src/server/db/schema';
+import { contestQuestions, contests, questions, testCases } from '../../src/server/db/schema';
 import type { Sample } from '../../src/shared/types';
 
 export interface QuestionFixture {
@@ -53,6 +53,33 @@ export async function createQuestion(db: DB, f: QuestionFixture = {}) {
     );
   }
   return q!;
+}
+
+let codes = 0;
+
+/** A published contest around the default fake-clock time (10:00Z) unless overridden. */
+export async function createContest(
+  db: DB,
+  questionIds: number[],
+  f: Partial<typeof contests.$inferInsert> & { durations?: (number | null)[]; points?: (number | null)[] } = {},
+) {
+  const { durations, points, ...values } = f;
+  const [c] = await db
+    .insert(contests)
+    .values({
+      name: `Contest ${++codes}`,
+      startsAt: new Date('2030-01-15T09:00:00Z'),
+      endsAt: new Date('2030-01-15T12:00:00Z'),
+      joinCode: `TEST-${String(codes).padStart(4, '0')}`,
+      status: 'published',
+      visibility: 'public',
+      ...values,
+    })
+    .returning();
+  await db.insert(contestQuestions).values(
+    questionIds.map((questionId, position) => ({ contestId: c!.id, questionId, position, durationMinutes: durations?.[position] ?? null, points: points?.[position] ?? null })),
+  );
+  return c!;
 }
 
 export async function setQuestion(db: DB, id: number, values: Partial<typeof questions.$inferInsert>) {

@@ -38,6 +38,7 @@ async function main() {
   void setup.run(abort.signal).catch((err) => log.error({ err }, 'runner setup failed'));
   await services.worker.recover();
   services.worker.start();
+  services.scheduler.start();
 
   await app.listen({ host: config.HOST, port: config.PORT });
 
@@ -47,6 +48,7 @@ async function main() {
     closing = true;
     log.info({ signal }, 'shutting down');
     abort.abort();
+    services.scheduler.stop();
     await app.close();
     await services.worker.stop();
     await pool.end();

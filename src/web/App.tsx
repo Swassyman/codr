@@ -15,6 +15,11 @@ const QuestionsPage = lazy(() => import('./pages/manage/QuestionsPage'));
 const QuestionEditorPage = lazy(() => import('./pages/manage/question-editor/QuestionEditorPage'));
 const PracticeListPage = lazy(() => import('./pages/practice/PracticeListPage'));
 const PracticeSolvePage = lazy(() => import('./pages/practice/PracticeSolvePage'));
+const ContestLobbyPage = lazy(() => import('./pages/contest/ContestLobbyPage'));
+const ContestSolvePage = lazy(() => import('./pages/contest/ContestSolvePage'));
+const ContestsManagePage = lazy(() => import('./pages/manage/ContestsManagePage'));
+const ContestEditorPage = lazy(() => import('./pages/manage/contest-editor/ContestEditorPage'));
+const ContestResultsPage = lazy(() => import('./pages/manage/ContestResultsPage'));
 
 function PageFallback() {
   return (
@@ -88,6 +93,39 @@ export function App() {
           element={
             <RequireRole>
               <PracticeSolvePage />
+            </RequireRole>
+          }
+        />
+        <Route path="/contests/:id" element={<ContestLobbyPage />} />
+        <Route
+          path="/contests/:id/q/:letter"
+          element={
+            <RequireRole>
+              <ContestSolvePage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/contests"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <ContestsManagePage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/contests/:id"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <ContestEditorPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/contests/:id/results"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <ContestResultsPage />
             </RequireRole>
           }
         />

@@ -15,6 +15,7 @@ import type { ExecutionPool } from './jobs/pool';
 import type { JobWorker } from './jobs/worker';
 import type { Runner } from './runner/types';
 import type { PistonSetup } from './runner/setup';
+import type { ExpiryScheduler } from './services/scheduler';
 import { HttpError, forbidden } from './lib/errors';
 import { CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE, loadSessionUser, randomToken, type SessionUser } from './auth/sessions';
 import { authRoutes } from './routes/auth';
@@ -24,6 +25,8 @@ import { contestRoutes } from './routes/contests';
 import { manageQuestionRoutes } from './routes/manage-questions';
 import { practiceRoutes } from './routes/practice';
 import { submissionRoutes } from './routes/submissions';
+import { contestPlayRoutes } from './routes/contest-play';
+import { manageContestRoutes } from './routes/manage-contests';
 
 export interface Services {
   config: Config;
@@ -33,6 +36,7 @@ export interface Services {
   events: EventBus;
   pool: ExecutionPool;
   worker: JobWorker;
+  scheduler: ExpiryScheduler;
   setup: PistonSetup | null;
   log: Logger;
 }
@@ -155,6 +159,8 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
   await app.register(manageQuestionRoutes);
   await app.register(practiceRoutes);
   await app.register(submissionRoutes);
+  await app.register(contestPlayRoutes);
+  await app.register(manageContestRoutes);
 
   const webDist = resolveWebDist(config);
   if (webDist) {

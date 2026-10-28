@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { or, sql } from 'drizzle-orm';
 import { loginSchema, registerSchema } from '../../shared/schemas';
 import { users } from '../db/schema';
@@ -27,9 +27,14 @@ export async function authRoutes(app: FastifyInstance) {
     },
   }));
 
+  // Keyed by address + account after the body is parsed, so many people behind
+  // one NAT address can sign in at once while guessing one account stays slow.
+  const perAccount = (field: 'login' | 'username') => (req: FastifyRequest) =>
+    `${req.ip}:${String((req.body as Record<string, unknown> | undefined)?.[field] ?? '').toLowerCase().slice(0, 254)}`;
+
   app.post(
     '/api/auth/login',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: config.LOGIN_RATE_PER_MINUTE, timeWindow: '1 minute', hook: 'preHandler', keyGenerator: perAccount('login') } } },
     async (req, reply) => {
       const body = parse(loginSchema, req.body);
       const [user] = await db
@@ -54,7 +59,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post(
     '/api/auth/register',
-    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute', hook: 'preHandler', keyGenerator: perAccount('username') } } },
     async (req, reply) => {
       if (!config.ALLOW_REGISTRATION) throw forbidden('registration_closed', 'Registration is turned off. Ask an admin for an account.');
       const body = parse(registerSchema, req.body);
