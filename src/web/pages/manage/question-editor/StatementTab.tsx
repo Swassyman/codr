@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ExternalLink, Plus, X } from 'lucide-react';
 import { slugify } from '../../../../shared/slug';
 import type { SourceInfo } from '../../../../shared/types';
@@ -6,6 +6,7 @@ import { AutoTextarea, TagInput } from '../../../components/form-bits';
 import { ProblemStatement } from '../../../components/ProblemStatement';
 import { Button, Field, IconButton, Input, Select } from '../../../components/ui';
 import type { TabProps } from './QuestionEditorPage';
+import { PasteStatementDialog } from './PasteStatementDialog';
 
 function SourceNote({ source }: { source: SourceInfo }) {
   return (
@@ -113,6 +114,7 @@ function SamplesEditor({ value, onChange }: { value: TabProps['values']['samples
 }
 
 export function StatementTab({ values, update, errors, source }: TabProps & { source: SourceInfo | null }) {
+  const [pasting, setPasting] = useState(false);
   const setTitle = (title: string) => {
     // Keep the slug in step with the title until someone edits it by hand.
     const followsTitle = values.slug === slugify(values.title) || values.slug.startsWith('untitled-question');
@@ -156,6 +158,11 @@ export function StatementTab({ values, update, errors, source }: TabProps & { so
         <Field label="Tags" hint="Press Enter or comma to add a tag." error={errors.tags}>
           {(p) => <TagInput {...p} value={values.tags} onChange={(tags) => update({ tags })} />}
         </Field>
+        <div className="-mb-3 flex justify-end">
+          <Button size="sm" variant="ghost" onClick={() => setPasting(true)}>
+            Paste a whole statement
+          </Button>
+        </div>
         <Field label="Problem statement" hint="Markdown, with $math$ and $$display math$$." error={errors.statement}>
           {(p) => <AutoTextarea {...p} minRows={8} maxRows={30} value={values.statement} onChange={(e) => update({ statement: e.target.value })} />}
         </Field>
@@ -181,6 +188,7 @@ export function StatementTab({ values, update, errors, source }: TabProps & { so
           {(p) => <AutoTextarea {...p} minRows={2} value={values.notes} onChange={(e) => update({ notes: e.target.value })} />}
         </Field>
       </div>
+      {pasting && <PasteStatementDialog onClose={() => setPasting(false)} onApply={(patch) => update(patch)} />}
       <div className="min-w-0">
         <div className="sticky top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-lg border border-line bg-surface px-6 pt-5">
           <p className="mb-4 text-xs text-ink-3">Preview, as participants will see it</p>

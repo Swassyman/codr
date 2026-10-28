@@ -9,7 +9,7 @@ import { api, ApiError, errorMessage } from '../../../lib/api';
 import { useAutosave } from '../../../lib/autosave';
 import { AppShell } from '../../../components/AppShell';
 import { SaveIndicator } from '../../../components/form-bits';
-import { Button, ConfirmDialog, ErrorNote, Spinner, Tab, TabList, TabPanel, Tabs } from '../../../components/ui';
+import { Button, ConfirmDialog, ErrorNote, Notice, Spinner, Tab, TabList, TabPanel, Tabs } from '../../../components/ui';
 import { StatusPill } from '../QuestionsPage';
 import { StatementTab } from './StatementTab';
 import { TestsTab } from './TestsTab';
@@ -156,6 +156,31 @@ function Editor({ question }: { question: QuestionEditorDTO }) {
         </div>
       )}
 
+      {meta.source && (meta.testCount === 0 || !autosave.values.statement.trim()) && (
+        <Notice className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="font-medium text-ink">Imported draft: review before publishing.</span>
+          {!autosave.values.statement.trim() && (
+            <span>
+              The source does not provide the statement.{' '}
+              {meta.source.url && (
+                <a href={meta.source.url} target="_blank" rel="noreferrer noopener" className="font-medium text-accent hover:underline">
+                  Open the original
+                </a>
+              )}{' '}
+              and use "Paste a whole statement".
+            </span>
+          )}
+          {meta.testCount === 0 && (
+            <span>
+              It has no tests yet.{' '}
+              <button type="button" className="font-medium text-accent hover:underline" onClick={() => setParams({ tab: 'tests' }, { replace: true })}>
+                Add tests
+              </button>
+              , then fill their outputs from a reference solution.
+            </span>
+          )}
+        </Notice>
+      )}
       <Tabs value={tab} onValueChange={(v) => setParams({ tab: v }, { replace: true })}>
         <TabList className="mb-6">
           <Tab value="statement">Statement</Tab>

@@ -27,6 +27,7 @@ import { practiceRoutes } from './routes/practice';
 import { submissionRoutes } from './routes/submissions';
 import { contestPlayRoutes } from './routes/contest-play';
 import { manageContestRoutes } from './routes/manage-contests';
+import { importRoutes } from './routes/import';
 
 export interface Services {
   config: Config;
@@ -161,6 +162,7 @@ export async function buildApp(services: Services): Promise<FastifyInstance> {
   await app.register(submissionRoutes);
   await app.register(contestPlayRoutes);
   await app.register(manageContestRoutes);
+  await app.register(importRoutes);
 
   const webDist = resolveWebDist(config);
   if (webDist) {

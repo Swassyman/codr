@@ -20,6 +20,7 @@ const ContestSolvePage = lazy(() => import('./pages/contest/ContestSolvePage'));
 const ContestsManagePage = lazy(() => import('./pages/manage/ContestsManagePage'));
 const ContestEditorPage = lazy(() => import('./pages/manage/contest-editor/ContestEditorPage'));
 const ContestResultsPage = lazy(() => import('./pages/manage/ContestResultsPage'));
+const ImportPage = lazy(() => import('./pages/manage/ImportPage'));
 
 function PageFallback() {
   return (
@@ -126,6 +127,14 @@ export function App() {
           element={
             <RequireRole roles={['admin', 'creator']}>
               <ContestResultsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/manage/import"
+          element={
+            <RequireRole roles={['admin', 'creator']}>
+              <ImportPage />
             </RequireRole>
           }
         />
