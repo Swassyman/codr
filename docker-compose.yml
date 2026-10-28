@@ -20,7 +20,9 @@ services:
   # network, cgroup memory/CPU/process limits, a private filesystem and output
   # caps. isolate needs a privileged container to create those cgroups.
   runner:
-    image: ghcr.io/engineer-man/piston:latest
+    # Piston, pinned, with a larger request body limit (see runner/Dockerfile).
+    build: ./runner
+    image: codr-runner:latest
     restart: unless-stopped
     privileged: true
     environment:
@@ -35,6 +37,7 @@ services:
       PISTON_RUN_CPU_TIME: "20000"
       PISTON_RUN_MEMORY_LIMIT: "2147483648"
       PISTON_MAX_CONCURRENT_JOBS: "64"
+      PISTON_BODY_LIMIT: "64mb"
     volumes:
       # Language packages are downloaded once (first boot) and kept here.
       - runner-packages:/piston/packages

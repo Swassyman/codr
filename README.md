@@ -1,25 +1,183 @@
 # Codr
 
-Self-hosted platform for local competitive coding contests. Participants write and run code in the browser against test cases; organizers author questions in structured forms and configure timed contests. Everything, including the code-execution sandbox, runs on one machine with `docker compose up`, and it works on a LAN without internet after the first start.
+Codr is a self-hosted platform for running competitive coding contests on a local network. Participants write and run code in the browser against test cases. Organizers write questions in structured forms, check them against a reference solution, and run contests with a choice of timing rules. Everything, including the sandbox that executes code, starts with one command and keeps working without internet after the first start.
 
-> Work in progress. Full setup, architecture and authoring guides are being written as the phases land.
+- [Quick start](#quick-start)
+- [Writing a question](#writing-a-question)
+- [Running a contest](#running-a-contest)
+- [Importing questions](#importing-questions)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Development and tests](#development-and-tests)
+- [Defaults and decisions](#defaults-and-decisions)
 
 ## Quick start
 
+You need Docker with Compose v2 on a Linux host with cgroup v2 (any current distribution). The runner container is privileged because its sandbox creates its own cgroups.
+
 ```sh
-cp .env.example .env        # optional; every value has a default
+cp .env.example .env     # optional: every value has a default
 docker compose up -d
 ```
 
-Open http://localhost:3000 and sign in as `admin` / `codr-admin` (change it under **Users**).
+Open http://localhost:3000 and sign in as **admin** / **codr-admin**. Change the password right away under **Users → Reset password** (or set `ADMIN_PASSWORD` in `.env` before the first start).
 
-The first start needs internet once: Docker pulls the images and the runner downloads the language packages (Python, C/C++, Java and JavaScript by default) into a persistent volume. After that, everything works offline.
+The first start needs internet once: Docker pulls the images and builds the web image, and the runner downloads the language packages (C, C++, Python 3, Java and JavaScript by default, about 1.5 GB) into a persistent volume. After that Codr runs offline. Participants on the same network open `http://<server-ip>:3000`.
 
-## Development
+The first start also seeds demo content: five sample questions (with tests and reference solutions, validated automatically once the runner is ready) and three public demo contests, one per timing mode, open for 30 days.
+
+Useful commands:
+
+```sh
+docker compose logs -f web                              # server log
+docker compose exec web node dist/server/seed.js        # re-run the (idempotent) seed
+docker compose exec web node dist/server/import-dataset.js --limit 10   # bulk-import from CodeContests
+docker compose down                                     # stop; data stays in the pgdata volume
+```
+
+## Writing a question
+
+Admins and contest creators work in the **Question bank**.
+
+1. **New question** opens the editor. It saves as you type; the indicator next to **Publish** shows the state.
+2. **Statement**: title, slug, difficulty or rating, tags, the statement, input and output format, constraints (one per row, rendered as a bullet list), examples with optional explanations, and notes. Text fields take Markdown with `$math$` and `$$display math$$` (KaTeX). The preview on the right is exactly what participants see. If you copied a whole problem from somewhere, **Paste a whole statement** splits it into the fields.
+3. **Tests**: add rows one at a time, drop a `.zip` of input/output pairs (`1.in`/`1.out` or `.ans`, `input/`/`output/` folders, Polygon `01`/`01.a`), or paste several tests at once (`===` between tests, `---` between input and output). Each test can be hidden, weighted, labelled and grouped; rows can be reordered, duplicated and deleted (with undo). Leave expected outputs empty and use **Fill outputs from a reference solution**: your solution runs on every input, you review the outputs, and you save the ones you want.
+4. **Limits and languages**: time and memory limits, per-language multipliers (Python and Java get more time by default), allowed languages, starter code, the output checker (exact, ignore trailing whitespace, token by token, numbers within a tolerance), points, and whether the question appears in practice.
+5. **Validate**: runs the reference solution on the examples and every test with the real limits and reports each verdict and timing. Changing tests or limits marks the result stale.
+6. **Publish**. Codr asks for confirmation if the question has not passed validation.
+
+Examples are judged first in every submission and are worth no points; they cannot leak anything because they are already public.
+
+## Running a contest
+
+In the **Contest builder**:
+
+1. **New contest**, then set the name, description and schedule.
+2. Pick a **timing mode**:
+
+   | Mode | What participants get |
+   | --- | --- |
+   | Fixed window | Everyone works between the start and end times. |
+   | Personal window | N minutes from the moment each person presses Start. The end time is the entry cutoff; people who started before it keep their full time. |
+   | Timer per question | Each question has its own timer (a default, overridable per question), started when the participant first opens it. When it runs out, the last code the server saved is submitted automatically and the question locks. The contest end cuts every timer short. |
+
+3. **Questions**: add published questions from the bank, order them (they are lettered A, B, C…), and override points or minutes per question.
+4. **Navigation**: *View once* means a question locks for good once the participant moves to another one (the server records it, so reloading, opening a new tab or using another device does not get around it). *In order only* forbids skipping ahead. They can be combined.
+5. **Access**: public (listed and open to registration), invite code, or private (you add people by username). Guests can be allowed to join with the code and a name.
+6. **Limits, results and scoring**: submissions per question, runs per minute, whether hidden-test results are shown right away or after the contest, per-test detail or only counts, partial or all-or-nothing scoring, penalty minutes, the leaderboard switch, and integrity signals (tab switches and pastes, shown to you and announced to participants; informational only, they prevent nothing).
+7. **Publish**. Share the contest link or the join code. Timing rules lock once the contest starts; the end time can still be extended.
+
+The **Results** page shows live standings, per-question scores and attempts, start and finish times and integrity counts; click a person to see their submissions, read their code, rejudge, and see their integrity timeline.
+
+All time rules are decided on the server, from the moment a request arrives. The browser clock only drives the countdown display and resynchronises with the server continuously. A submission that reached the server before the deadline counts, however long judging takes.
+
+## Importing questions
+
+**Import** brings problems in as drafts. Every imported question keeps its source, license and a link to the original, and lands in the same editor for review.
+
+| Source | Provides | License and use |
+| --- | --- | --- |
+| CodeContests dataset (DeepMind, Hugging Face) | Statement, examples, hidden tests, accepted solutions | CC BY 4.0. Attribution is added automatically. |
+| Codeforces (official API) | Name, rating, tags, link | Metadata only. Statements belong to their authors. |
+| AtCoder (AtCoder Problems by kenkoooo) | Name, estimated difficulty, link | Metadata only. |
+| CSES Problem Set (best effort) | Statement, limits, examples | Not openly licensed: private local use with attribution only. Hidden tests are not public. |
+
+Metadata-only and scraped questions usually lack tests; the editor points this out and offers the reference-solution generator. When a site blocks automated access, Codr reports it and does not work around it: open the original link and use **Paste a whole statement**. **Do not republish scraped statements publicly.**
+
+For bulk imports from the dataset there is a script:
+
+```sh
+npm run import:dataset -- --split test --limit 20 --extra-tests 10
+npm run import:dataset -- --search graph --limit 5
+```
+
+### Adding an importer adapter
+
+An adapter is one file in `src/server/importers/` implementing `SourceAdapter` (`types.ts`):
+
+```ts
+export const myAdapter: SourceAdapter<RawProblem> = {
+  info: { id: 'my-source', name: 'My source', kind: 'metadata', description: '…', licenseNote: '…', provides: { statement: false, tests: false, solution: false } },
+  async search(query, ctx) { /* return { results: SearchResult[] } */ },
+  async fetchProblem(externalId, ctx) { /* return the raw problem */ },
+  normalize(raw, ctx) { /* return a NormalizedQuestion: Codr's question shape */ },
+};
+```
+
+Register it in `ADAPTERS` in `registry.ts`; the UI and API pick it up automatically. Rules for adapters:
+
+- Make every request through `ctx.http.get(url, 'json' | 'text', { cacheMs, minIntervalMs })`. It sends the configured User-Agent, checks robots.txt (pass `api: true` only for documented APIs meant for programs), spaces requests per host, caches responses in Postgres, and turns bot challenges into a "blocked" error.
+- Throw `SourceError` for expected failures (not found, unavailable, blocked); it is reported to the user and never affects other sources.
+- Set an honest `licenseNote` and fill `license` and `attribution` in the normalized question.
+- Put pure parsing in exported functions and cover them with unit tests (see `tests/unit/importers.test.ts`).
+
+## Architecture
+
+```
+ browser ──HTTP/SSE──▶ web (Fastify + React build) ──SQL──▶ db (Postgres 17)
+                         │  job worker, expiry scheduler
+                         └──HTTP──▶ runner (Piston + isolate sandbox)
+```
+
+- **web**: one Node process. Fastify serves the API and the built React app. It also runs the **job worker**, which claims queued runs and submissions from Postgres (`FOR UPDATE SKIP LOCKED`) and sends programs to the runner through an execution pool that serves interactive runs before submission judging. The **expiry scheduler** handles per-question timers. Live updates (job status, contest changes, server time) go to the browser over Server-Sent Events. The web process never executes user code.
+- **runner**: [Piston](https://github.com/engineer-man/piston), behind the `Runner` interface (`src/server/runner/types.ts`) so the engine can be swapped. Every program runs in an isolate sandbox with no network, cgroup CPU-time, wall-time, memory and process limits, an output cap, its own filesystem with a private writable box, and an unprivileged user. `runner/Dockerfile` pins the image and patches two upstream issues that break judging with real test data: the 100 KB request limit and truncation of large stdin. Judge0 CE was not used because it requires cgroup v1, which current distributions no longer provide.
+- **db**: Postgres 17 with Drizzle migrations (`drizzle/`), applied automatically on start.
+
+Key ideas in the code:
+
+- `src/shared/timing.ts`: every timing and locking rule as pure functions of server timestamps. The API calls them with the request's arrival time; the client only renders what the server decided.
+- `src/server/routes/contest-play.ts`: opening a question is the only way to read its statement, and it records the first view (and, in view-once mode, locks the question being left) in a transaction that holds the participant's row lock, so parallel tabs cannot race. Runs, drafts and submissions are refused for locked questions.
+- `src/server/jobs/judge.ts`: examples, then tests, checked by `src/shared/checkers.ts`; per-test verdict, time, memory and points; results never contain test data.
+- `src/server/services/submissions.ts`: the participant view of a submission applies the contest's reveal and detail rules; hidden tests' inputs and outputs are never sent.
+
+Data model (Postgres): `users`, `sessions`, `questions` (statement fields, limits, checker, reference solution, source), `test_cases`, `contests`, `contest_questions`, `participants` (entry and finish times), `participant_questions` (first view, left at, expiry processed), `drafts`, `submissions` (arrival time, verdict, per-test results), `runs`, `integrity_events`, `import_cache`.
+
+Security: scrypt password hashes, httpOnly SameSite session cookies, a double-submit CSRF token plus an Origin check on every state-changing request, rate limits on sign-in, runs and submissions (keyed per account so a classroom behind one NAT can sign in), Zod validation on every input, authorization on every endpoint, and a strict Content Security Policy.
+
+## Configuration
+
+All settings are environment variables; see `.env.example` for the full list with comments. The most common:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `CODR_PORT` | `3000` | Host port of the web app. |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | `admin`, `codr-admin` | First admin, created when no admin exists. |
+| `SEED_ON_START` | `true` | Seed demo content into an empty database. |
+| `ALLOW_REGISTRATION` | `true` | Let people create participant accounts. |
+| `RUNNER_PACKAGES` | `python,gcc,node,java` | Language packages to install (`gcc` gives C and C++, `node` gives JavaScript; add `go`, `rust`). |
+| `RUNNER_CONCURRENCY` | `4` | Programs executed at the same time. |
+| `COOKIE_SECURE` | `false` | Set to `true` when serving over HTTPS. |
+| `FEATURE_LEADERBOARD_UI` | `false` | Show the leaderboard page for contests that enable it. |
+
+## Development and tests
 
 ```sh
 npm install
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db runner
-npm run dev            # API on :3000 (watch mode) + Vite on :5173
-npm test               # unit + integration tests (needs the dev database)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db runner   # Postgres on :55432, runner on :2000
+npm run dev          # API on :3000 (watch) and Vite on :5173 with hot reload
+npm run typecheck
+npm test             # unit + integration tests (uses a codr_test database on the dev Postgres)
 ```
+
+- Unit tests (`tests/unit`): timing and lock rules, checkers, scoring, runner result mapping, test import parsing, importer parsing.
+- Integration tests (`tests/integration`): the real API against Postgres with a deterministic fake runner (auth, CSRF, authoring, the submit → judge → verdict flow, contests in every timing mode, view-once across tabs and devices, auto-submit at expiry, reveal rules, guests, imports, user management). When the dev runner is reachable, extra tests run real programs in the sandbox (TLE, MLE, no network, large inputs, real judging, seed validation).
+- End-to-end (`e2e/`): a participant going through a view-once contest in a real browser. Against a running stack: `npx playwright install chromium && E2E_BASE_URL=http://localhost:3000 npx playwright test` (or set `CHROME_PATH` to a local Chrome).
+
+Project layout: `src/shared` (code used by both sides: schemas, timing, checkers, scoring, languages), `src/server` (API, jobs, runner, importers, seed), `src/web` (React app), `drizzle/` (migrations), `runner/` (runner image), `scripts/` (seed, dataset import), `tests/`, `e2e/`.
+
+## Defaults and decisions
+
+- Stack: React + Vite with a Fastify API in one TypeScript repo; Postgres with Drizzle; Monaco and KaTeX bundled locally (no CDN), syntax highlighting only (no autocomplete).
+- Languages: C++17 and C (GCC with `-O2` enabled through a pragma, since Piston's GCC package compiles without optimisation), Python 3, Java (time limits include a 1.5 s allowance because the JVM compiles the source at run time), JavaScript.
+- Samples are judged first in every submission and are worth no points.
+- Practice shows published questions marked for practice, except while they are part of a published contest that has not finished.
+- Personal-window mode: the contest end is the entry cutoff; each participant gets the full duration from entering.
+- Per-question timers: the auto-submit uses the newest draft the server received before the deadline. The editor saves continuously and once more just before the deadline.
+- Guests exist for one contest and live in one browser, so view-once cannot be enforced across devices for guests; use accounts for strict contests.
+- Integrity signals (tab switches, pastes) are recorded only when the contest enables them, participants are told, and they are informational only.
+- The leaderboard is off by default. Standings, penalty and freeze are complete in the API (`GET /api/contests/:id/leaderboard`); the page is a stub behind `FEATURE_LEADERBOARD_UI`.
+- One web process: the job queue lives in Postgres, but live events use an in-process bus. Running several web processes would need Postgres LISTEN/NOTIFY for events and a single scheduler.
+
+## Licensing of imported content
+
+Codr keeps the source, license and attribution of every imported question. Content from the CodeContests dataset is CC BY 4.0. Codeforces and AtCoder imports contain only metadata and a link. CSES statements are not openly licensed and are imported for private, local use only. Do not republish imported statements publicly unless their license allows it.

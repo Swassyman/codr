@@ -13,7 +13,7 @@
     "dev:web": "vite",
     "build": "npm run build:web && npm run build:server",
     "build:web": "vite build",
-    "build:server": "esbuild src/server/main.ts scripts/import-dataset.ts --bundle --platform=node --target=node22 --format=esm --packages=external --outdir=dist/server --entry-names=[name]",
+    "build:server": "esbuild src/server/main.ts scripts/seed.ts scripts/import-dataset.ts --bundle --platform=node --target=node22 --format=esm --packages=external --outdir=dist/server --entry-names=[name]",
     "start": "node dist/server/main.js",
     "db:generate": "drizzle-kit generate",
     "seed": "tsx scripts/seed.ts",

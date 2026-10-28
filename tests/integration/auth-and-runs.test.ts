@@ -176,6 +176,13 @@ describe.runIf(live)('live Piston runner', () => {
     expect(res.status).toBe('memory_limit');
   });
 
+  it('passes large inputs through completely (patched runner image)', async () => {
+    const stdin = `${'1234567890'.repeat(300_000)}\n`; // 3 MB
+    const res = await runner.execute({ language: 'python', source: 'import sys\nprint(len(sys.stdin.buffer.read()))', stdin, timeLimitMs: 3000, memoryLimitMb: 256 });
+    expect(res.status).toBe('ok');
+    expect(res.stdout.trim()).toBe(String(stdin.length));
+  });
+
   it('has no network inside the sandbox', async () => {
     const res = await runner.execute({
       language: 'python',

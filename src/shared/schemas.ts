@@ -214,6 +214,25 @@ export const integrityBatchSchema = z.object({
     .max(200),
 });
 
+// ---------------------------------------------------------------- Admin
+
+export const roleSchema = z.enum(['admin', 'creator', 'participant']);
+
+export const createUserSchema = z.object({
+  username: usernameSchema,
+  displayName: displayNameSchema,
+  email: z.union([z.email('Enter a valid email.'), z.literal('')]).optional(),
+  password: passwordSchema,
+  role: roleSchema,
+});
+
+export const updateUserSchema = z.object({
+  displayName: displayNameSchema.optional(),
+  role: roleSchema.optional(),
+  disabled: z.boolean().optional(),
+  password: passwordSchema.optional(),
+});
+
 export const publishSchema = z.object({
   /** Publish even though validation is missing, stale or failing. */
   acknowledgeValidation: z.boolean().optional(),

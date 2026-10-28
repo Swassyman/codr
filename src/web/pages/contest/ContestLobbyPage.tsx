@@ -125,6 +125,13 @@ export default function ContestLobbyPage() {
             <h2 className="mb-3 text-base font-semibold">How this contest works</h2>
             <ContestRules contest={c} now={now} />
           </section>
+          {c.leaderboardEnabled && (participating || c.isStaff) && (
+            <p className="mt-8">
+              <Link to={`/contests/${c.id}/leaderboard`} className="text-sm font-medium text-accent hover:underline">
+                Leaderboard
+              </Link>
+            </p>
+          )}
           {c.isStaff && (
             <Notice className="mt-8">
               You organize this contest.{' '}
