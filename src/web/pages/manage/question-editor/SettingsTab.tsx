@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { CHECKER_LABELS } from '../../../../shared/checkers';
+import { FUNCTION_LANGUAGES } from '../../../../shared/function-spec';
+import { starterFor } from '../../../../shared/function-wrappers';
 import { LANGUAGES, LANGUAGE_IDS, effectiveLimits, type LanguageId } from '../../../../shared/languages';
 import { CHECKER_TYPES, type CheckerType } from '../../../../shared/types';
 import { useLanguageLabel, useRuntimes } from '../../../lib/runtimes';
@@ -22,7 +24,7 @@ function Section({ title, description, children }: { title: string; description?
 
 const numberOrNull = (v: string) => (v === '' ? null : Number(v));
 
-export function SettingsTab({ values, update, errors }: TabProps) {
+export function SettingsTab({ values, update, errors, functionSpec }: TabProps) {
   const runtimes = useRuntimes();
   const languageLabel = useLanguageLabel();
   const [starterLang, setStarterLang] = useState<LanguageId>(values.allowedLanguages[0] ?? 'cpp');
@@ -43,9 +45,19 @@ export function SettingsTab({ values, update, errors }: TabProps) {
   };
 
   const starter = values.starterCode[starterLang];
+  // The default template of a function-style question is its generated method stub.
+  const defaultStarter = (functionSpec && starterFor(functionSpec, starterLang)) || LANGUAGES[starterLang].template;
+  const languageSupported = (l: LanguageId) => !functionSpec || (FUNCTION_LANGUAGES as readonly string[]).includes(l);
 
   return (
     <div className="max-w-5xl">
+      {functionSpec && (
+        <p className="mb-6 rounded-md border border-line bg-well px-4 py-3 text-sm text-ink-2">
+          <strong className="font-medium text-ink">Function-style question.</strong> Participants implement{' '}
+          <code className="font-mono text-[13px]">{functionSpec.name}({functionSpec.params.map((p) => p.name).join(', ')})</code> and Codr adds the input parsing. Tests are one
+          JSON value per argument line, and the expected output is the returned value as JSON. Languages: {FUNCTION_LANGUAGES.map((l) => LANGUAGES[l].label).join(', ')}.
+        </p>
+      )}
       <Section title="Limits" description="Per test. Language multipliers below scale these for slower languages.">
         <div className="grid max-w-md gap-4 sm:grid-cols-2">
           <Field label="Time limit (ms)" error={errors.timeLimitMs}>
@@ -85,13 +97,15 @@ export function SettingsTab({ values, update, errors }: TabProps) {
                         type="checkbox"
                         aria-label={`Allow ${languageLabel(id)}`}
                         className="size-4 accent-[var(--accent)]"
-                        checked={allowed}
+                        checked={allowed && languageSupported(id)}
+                        disabled={!languageSupported(id)}
                         onChange={(e) => toggleLanguage(id, e.target.checked)}
                       />
                     </td>
                     <td className="py-2 pr-3">
                       {languageLabel(id)}
-                      {!installed && runtimes.data && <span className="ml-2 text-xs text-warn">not installed on the runner</span>}
+                      {!languageSupported(id) && <span className="ml-2 text-xs text-ink-3">no function wrapper</span>}
+                      {languageSupported(id) && !installed && runtimes.data && <span className="ml-2 text-xs text-warn">not installed on the runner</span>}
                     </td>
                     <td className="py-2 pr-3">
                       <Input
@@ -141,7 +155,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
             ))}
           </Select>
           {starter == null ? (
-            <Button size="sm" onClick={() => update({ starterCode: { ...values.starterCode, [starterLang]: LANGUAGES[starterLang].template } })}>
+            <Button size="sm" onClick={() => update({ starterCode: { ...values.starterCode, [starterLang]: defaultStarter } })}>
               Write custom starter code
             </Button>
           ) : (
@@ -161,7 +175,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
         <CodeEditor
           className="h-56 overflow-hidden rounded-md border border-line"
           language={LANGUAGES[starterLang].monaco}
-          value={starter ?? LANGUAGES[starterLang].template}
+          value={starter ?? defaultStarter}
           readOnly={starter == null}
           onChange={(code) => update({ starterCode: { ...values.starterCode, [starterLang]: code } })}
           ariaLabel="Starter code"
@@ -177,7 +191,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
                 value={values.checker.type}
                 onChange={(e) => {
                   const type = e.target.value as CheckerType;
-                  update({ checker: type === 'float' ? { type, epsilon: values.checker.epsilon ?? 1e-6 } : { type } });
+                  update({ checker: type === 'float' || type === 'json' ? { type, epsilon: values.checker.epsilon ?? (type === 'json' ? 1e-5 : 1e-6) } : { type } });
                 }}
               >
                 {CHECKER_TYPES.map((t) => (
@@ -188,7 +202,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
               </Select>
             )}
           </Field>
-          {values.checker.type === 'float' && (
+          {(values.checker.type === 'float' || values.checker.type === 'json') && (
             <Field label="Tolerance" hint="Absolute or relative error allowed." error={errors.checker}>
               {(p) => (
                 <Input
@@ -196,7 +210,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
                   type="number"
                   step="any"
                   value={values.checker.epsilon ?? ''}
-                  onChange={(e) => update({ checker: { type: 'float', epsilon: e.target.value === '' ? undefined : Number(e.target.value) } })}
+                  onChange={(e) => update({ checker: { type: values.checker.type, epsilon: e.target.value === '' ? undefined : Number(e.target.value) } })}
                 />
               )}
             </Field>

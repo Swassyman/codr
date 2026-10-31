@@ -20,9 +20,17 @@ export interface FunctionSpec {
   name: string;
   params: FunctionParam[];
   returnType: string;
+  /** Integers outside 32 bits occur in the tests, so statically typed languages use 64-bit integers. */
+  wide?: boolean;
   /** Why the wrappers cannot drive this question, or null when they can. */
   unsupported: string | null;
 }
+
+/** A parameter or return type, language neutral. Optional[ListNode] is just a (nullable) linked list. */
+export type TypeNode = { k: 'int' | 'float' | 'str' | 'bool' | 'listnode' | 'treenode' } | { k: 'list'; of: TypeNode };
+
+/** The languages the function wrappers can drive. */
+export const FUNCTION_LANGUAGES = ['python', 'cpp', 'java', 'javascript', 'typescript'] as const;
 
 class LiteralError extends Error {}
 
@@ -177,11 +185,54 @@ const LINKED = new Set(['ListNode', 'TreeNode']);
 
 /** Why a Python type annotation cannot be driven by the wrappers, or null. */
 export function unsupportedType(type: string): string | null {
+  try {
+    parseType(type);
+    return null;
+  } catch {
+    return `the type "${type.trim()}" is not supported`;
+  }
+}
+
+/** Python annotation → TypeNode. Optional is only meaningful over the linked types. */
+export function parseType(type: string): TypeNode {
   const t = type.trim();
-  if (SCALARS.has(t) || LINKED.has(t)) return null;
-  const inner = /^(?:List|list|Optional)\[(.+)\]$/.exec(t)?.[1];
-  if (inner) return unsupportedType(inner);
-  return `the type "${t}" is not supported`;
+  if (SCALARS.has(t)) return { k: t as 'int' | 'float' | 'str' | 'bool' };
+  if (t === 'ListNode') return { k: 'listnode' };
+  if (t === 'TreeNode') return { k: 'treenode' };
+  const optional = /^Optional\[(.+)\]$/.exec(t)?.[1];
+  if (optional) {
+    const inner = parseType(optional);
+    if (LINKED.has(optional.trim())) return inner;
+    throw new LiteralError(`Optional is only supported over ListNode and TreeNode`);
+  }
+  const list = /^(?:List|list)\[(.+)\]$/.exec(t)?.[1];
+  if (list) return { k: 'list', of: parseType(list) };
+  throw new LiteralError(`unsupported type ${t}`);
+}
+
+/**
+ * Whether any integer in the tests needs more than 32 bits. Statically typed
+ * languages then use 64-bit integers for every int, as the signature cannot
+ * say which of the question's ints are wide.
+ */
+export function needsWideInts(spec: Pick<FunctionSpec, 'params' | 'returnType'>, tests: { input: string; output: string }[]): boolean {
+  const wide = (json: string, type: TypeNode): boolean => {
+    let value: unknown;
+    try {
+      value = JSON.parse(json);
+    } catch {
+      return false;
+    }
+    const walk = (v: unknown, t: TypeNode): boolean => {
+      if (t.k === 'int') return typeof v === 'number' && Math.abs(v) > 2_147_483_647;
+      if (t.k === 'list' && Array.isArray(v)) return v.some((x) => walk(x, t.of));
+      return false;
+    };
+    return walk(value, type);
+  };
+  const types = spec.params.map((p) => parseType(p.type));
+  const returns = parseType(spec.returnType);
+  return tests.some((t) => t.input.split('\n').some((line, i) => types[i] !== undefined && wide(line, types[i]!)) || wide(t.output.trim(), returns));
 }
 
 /** Splits "a: int, b: List[int] = None" at top-level commas. */

@@ -24,6 +24,8 @@ export interface TabProps {
   /** Reflect a value the server already saved, without sending it again. */
   setLocal: (patch: Partial<QuestionForm>) => void;
   errors: Record<string, string>;
+  /** The method of a function-style question; null for ordinary (standard input) questions. */
+  functionSpec?: QuestionEditorDTO['functionSpec'];
 }
 
 function pickFields(q: QuestionEditorDTO): QuestionForm {
@@ -116,6 +118,7 @@ function Editor({ question }: { question: QuestionEditorDTO }) {
     update: autosave.update,
     setLocal: (patch) => autosave.setValues((v) => ({ ...v, ...patch })),
     errors: autosave.errors,
+    functionSpec: meta.functionSpec,
   };
 
   return (

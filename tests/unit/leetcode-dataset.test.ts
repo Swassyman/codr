@@ -78,14 +78,13 @@ describe('LeetCode row normalisation', () => {
       functionSpec: { name: 'twoSum', returnType: 'List[int]', params: [{ name: 'nums' }, { name: 'target' }] },
       referenceSolution: { language: 'python' },
     });
-    expect(n.tests).toEqual([
-      { input: '[3,3]\n6\n', output: '[0,1]\n' },
-      { input: '[-1,-2,-3,-4]\n-8\n', output: 'null\n' },
-    ]);
+    // The second dataset test returns None for an input with no valid pair; it is not a valid test.
+    expect(n.tests).toEqual([{ input: '[3,3]\n6\n', output: '[0,1]\n' }]);
     expect(n.samples[0]).toMatchObject({ input: '[2,7,11,15]\n9\n', output: '[0,1]\n' });
     expect(n.samples[0]!.explanation).toContain('`nums = [2,7,11,15], target = 9`');
     expect(n.notes).toMatch(/^\*\*Follow-up:\*\*/);
-    expect(n.checker).toBeUndefined();
+    expect(n.checker).toEqual({ type: 'json', epsilon: 1e-5 });
+    expect(n.functionSpec?.wide).toBe(false);
     expect(n.license).toMatch(/Apache-2.0/);
   });
 
@@ -94,8 +93,9 @@ describe('LeetCode row normalisation', () => {
       row({ starter_code: 'class Solution:\n    def intToRoman(self, num: int) -> str:\n        ', input_output: [{ input: 'num = 1423', output: 'MCDXXIII' }] }),
     );
     expect(str.tests).toEqual([{ input: '1423\n', output: '"MCDXXIII"\n' }]);
-    const flt = normalizeRow(row({ starter_code: 'class Solution:\n    def f(self, a: List[int]) -> float:\n        ', input_output: [{ input: 'a = [1]', output: '2.0' }] }));
-    expect(flt.checker).toEqual({ type: 'float', epsilon: 1e-5 });
+    const wide = normalizeRow(row({ starter_code: 'class Solution:\n    def f(self, a: List[int]) -> int:\n        ', input_output: [{ input: 'a = [3000000000]', output: '3000000000' }] }));
+    expect(wide.functionSpec?.wide).toBe(true);
+    expect(wide.tests).toEqual([{ input: '[3000000000]\n', output: '3000000000\n' }]);
   });
 
   it('skips unreadable tests, and uses tests as samples when the examples are free-form', () => {
@@ -107,6 +107,23 @@ describe('LeetCode row normalisation', () => {
     );
     expect(n.tests).toHaveLength(1);
     expect(n.samples).toEqual([{ input: '[1]\n2\n', output: '[0]\n' }]);
+  });
+
+  it('writes an empty list or tree result as [], and drops crashed-reference tests', () => {
+    const tree = normalizeRow(
+      row({
+        starter_code: 'class Solution:\n    def prune(self, root: Optional[TreeNode]) -> Optional[TreeNode]:\n        ',
+        input_output: [{ input: 'root = [1,2]', output: 'None' }, { input: 'root = [1]', output: '[1]' }],
+      }),
+    );
+    expect(tree.tests).toEqual([{ input: '[1,2]\n', output: '[]\n' }, { input: '[1]\n', output: '[1]\n' }]);
+    const str = normalizeRow(
+      row({
+        starter_code: 'class Solution:\n    def f(self, s: str) -> str:\n        ',
+        input_output: [{ input: 's = "ab"', output: 'ba' }, { input: 's = "abc"', output: 'Error: list index out of range' }],
+      }),
+    );
+    expect(str.tests).toEqual([{ input: '"ab"\n', output: '"ba"\n' }]);
   });
 
   it('refuses design questions, in-place edits and rows without readable tests', () => {

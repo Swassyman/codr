@@ -1,4 +1,5 @@
 import { and, inArray, sql } from 'drizzle-orm';
+import { FUNCTION_LANGUAGES } from '../../shared/function-spec';
 import { DEFAULT_LANGUAGES } from '../../shared/languages';
 import type { DB } from '../db';
 import { questions, testCases } from '../db/schema';
@@ -48,7 +49,7 @@ export async function saveImported(db: DB, adapterId: string, q: NormalizedQuest
         difficulty: q.difficulty,
         timeLimitMs: q.timeLimitMs ?? 2000,
         memoryLimitMb: q.memoryLimitMb ?? 256,
-        allowedLanguages: DEFAULT_LANGUAGES,
+        allowedLanguages: q.functionSpec ? [...FUNCTION_LANGUAGES] : DEFAULT_LANGUAGES,
         referenceSolution: q.referenceSolution,
         functionSpec: q.functionSpec ?? null,
         ...(q.checker ? { checker: q.checker } : {}),

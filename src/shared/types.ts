@@ -22,7 +22,7 @@ export const VERDICT_LABELS: Record<TestVerdict, string> = {
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed';
 
-export const CHECKER_TYPES = ['exact', 'trim', 'tokens', 'float'] as const;
+export const CHECKER_TYPES = ['exact', 'trim', 'tokens', 'float', 'json'] as const;
 export type CheckerType = (typeof CHECKER_TYPES)[number];
 export interface CheckerConfig {
   type: CheckerType;

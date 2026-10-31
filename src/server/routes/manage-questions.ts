@@ -71,6 +71,7 @@ function toEditorDTO(q: Question, extra: { testCount: number; usedIn: number; ca
     languageLimits: q.languageLimits,
     allowedLanguages: q.allowedLanguages,
     starterCode: q.starterCode,
+    functionSpec: q.functionSpec ?? null,
     points: q.points,
     scoringMode: q.scoringMode,
     checker: q.checker,

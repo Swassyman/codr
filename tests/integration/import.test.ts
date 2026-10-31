@@ -94,7 +94,7 @@ describe('saving imports', () => {
       ctx.clock.now(),
     );
     const [row] = await ctx.db.select().from(questions).where(eq(questions.id, saved.id));
-    expect(row).toMatchObject({ functionSpec: spec, checker: { type: 'float', epsilon: 1e-5 } });
+    expect(row).toMatchObject({ functionSpec: spec, checker: { type: 'float', epsilon: 1e-5 }, allowedLanguages: ['python', 'cpp', 'java', 'javascript', 'typescript'] });
     // Questions without one stay stdin-style.
     const plain = await saveImported(ctx.db, 'code-contests', problem({ externalId: 'plain:1' }), user.id, ctx.clock.now());
     const [plainRow] = await ctx.db.select().from(questions).where(eq(questions.id, plain.id));

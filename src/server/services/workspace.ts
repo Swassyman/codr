@@ -1,5 +1,7 @@
 import type { FastifyRequest } from 'fastify';
 import type { AutocompletePolicy } from '../../shared/autocomplete';
+import { FUNCTION_LANGUAGES } from '../../shared/function-spec';
+import { starterFor } from '../../shared/function-wrappers';
 import { LANGUAGE_IDS, type LanguageId } from '../../shared/languages';
 import type { StatementDTO, WorkspaceQuestionDTO } from '../../shared/api';
 import type { Question } from '../db/schema';
@@ -25,9 +27,22 @@ export function toStatement(q: Question): StatementDTO {
 }
 
 /** Allowed languages: the question's list, narrowed by a contest override if any. */
-export function allowedLanguages(q: Pick<Question, 'allowedLanguages'>, contestOverride: LanguageId[] = []) {
-  const base = q.allowedLanguages.length ? q.allowedLanguages : [...LANGUAGE_IDS];
+export function allowedLanguages(q: Pick<Question, 'allowedLanguages' | 'functionSpec'>, contestOverride: LanguageId[] = []) {
+  let base = q.allowedLanguages.length ? q.allowedLanguages : [...LANGUAGE_IDS];
+  // Function-style questions are driven by wrappers that exist for some languages only.
+  if (q.functionSpec) base = base.filter((l) => (FUNCTION_LANGUAGES as readonly string[]).includes(l));
   return contestOverride.length ? base.filter((l) => contestOverride.includes(l)) : base;
+}
+
+/** What the editor starts with: the staff's own template where set, else the generated method stub of a function-style question. */
+export function starterCodeFor(q: Pick<Question, 'starterCode' | 'functionSpec'>, languages: LanguageId[]): Question['starterCode'] {
+  if (!q.functionSpec) return q.starterCode;
+  const generated: Question['starterCode'] = {};
+  for (const l of languages) {
+    const stub = starterFor(q.functionSpec, l);
+    if (stub) generated[l] = stub;
+  }
+  return { ...generated, ...q.starterCode };
 }
 
 export function toWorkspace(
@@ -43,7 +58,7 @@ export function toWorkspace(
     slug: q.slug,
     tags: q.tags,
     languages,
-    starterCode: q.starterCode,
+    starterCode: starterCodeFor(q, languages),
     drafts,
     points,
     autocomplete,

@@ -1,4 +1,5 @@
 import type { AutocompletePolicy } from './autocomplete';
+import type { FunctionSpec } from './function-spec';
 import type { LanguageId } from './languages';
 import type {
   AutocompleteRule,
@@ -107,6 +108,8 @@ export interface QuestionEditorDTO {
   languageLimits: LanguageLimits;
   allowedLanguages: LanguageId[];
   starterCode: Partial<Record<LanguageId, string>>;
+  /** Set for function-style questions: participants implement this method and Codr drives it. */
+  functionSpec: FunctionSpec | null;
   points: number;
   scoringMode: ScoringMode;
   checker: CheckerConfig;

@@ -1,5 +1,5 @@
 import { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
-import { parsePythonSignature, toStdinTest, type FunctionSpec } from '../../shared/function-spec';
+import { needsWideInts, parsePythonSignature, toStdinTest, type FunctionSpec } from '../../shared/function-spec';
 import type { Difficulty, Sample } from '../../shared/types';
 import { SourceError, type ImportContext, type NormalizedQuestion, type SearchResult, type SourceAdapter } from './types';
 
@@ -99,7 +99,17 @@ export function normalizeRow(row: LeetCodeRow): NormalizedQuestion {
     if (tests.length >= MAX_TESTS) break;
     if (typeof t?.input !== 'string' || typeof t.output !== 'string') continue;
     try {
-      tests.push(toStdinTest(spec, t.input, t.output, { rawText }));
+      // A str result that is an error message: the reference solution crashed on that input.
+      if (rawText && /^Error: /.test(t.output)) continue;
+      const test = toStdinTest(spec, t.input, t.output, { rawText });
+      if (test.output === 'null\n') {
+        // The dataset prints an empty list or tree result as None, and the wrappers as [] (LeetCode's form).
+        if (/Node/.test(spec.returnType)) test.output = '[]\n';
+        // A null result for a signature that cannot return null: the reference solution fell off the end
+        // on an input outside the problem's constraints (two-sum with no pair), so it is not a valid test.
+        else continue;
+      }
+      tests.push(test);
     } catch {
       // A test whose values are not plain literals (an error message, float("inf")) is skipped.
     }
@@ -132,9 +142,10 @@ export function normalizeRow(row: LeetCodeRow): NormalizedQuestion {
     memoryLimitMb: null,
     tests,
     referenceSolution: row.completion ? { language: 'python', code: row.completion } : null,
-    functionSpec: spec,
-    // A returned float is compared within a tolerance; everything else as exact JSON text.
-    checker: spec.returnType === 'float' ? { type: 'float', epsilon: 1e-5 } : undefined,
+    // Statically typed languages use 64-bit integers when any test needs them.
+    functionSpec: { ...spec, wide: needsWideInts(spec, [...tests, ...samples]) },
+    // The result is one JSON value: integers compare exactly, other numbers within a tolerance.
+    checker: { type: 'json', epsilon: 1e-5 },
     license: 'Apache-2.0 (newfacade/LeetCodeDataset). The problem statements originate from LeetCode (© LeetCode); private local use with attribution.',
     attribution: `From the LeetCodeDataset by newfacade (Apache-2.0); problem "${title}" originally published on LeetCode.`,
   };

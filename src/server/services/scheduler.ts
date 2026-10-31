@@ -101,7 +101,7 @@ export class ExpiryScheduler {
         .orderBy(desc(drafts.updatedAt))
         .limit(1);
       if (!draft || !draft.code.trim()) return { submitted: null };
-      const [q] = await tx.select({ allowedLanguages: questions.allowedLanguages }).from(questions).where(eq(questions.id, row.questionId));
+      const [q] = await tx.select({ allowedLanguages: questions.allowedLanguages, functionSpec: questions.functionSpec }).from(questions).where(eq(questions.id, row.questionId));
       if (!q || !allowedLanguages(q, (row.contestLanguages ?? []) as never).includes(draft.language)) return { submitted: null };
 
       // Skip if the same code was already submitted.

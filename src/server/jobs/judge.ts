@@ -1,4 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm';
+import { programSource } from '../../shared/function-wrappers';
 import { effectiveLimits } from '../../shared/languages';
 import { judgeExecution } from '../../shared/checkers';
 import { overallVerdict, pointsPerTest, submissionPoints, testFraction, type ContestScoring } from '../../shared/scoring';
@@ -62,7 +63,7 @@ export async function judgeSubmission(ctx: JobContext, sub: Submission) {
       if (i >= cases.length) return;
       const c = cases[i]!;
       const execution = await pool.run('low', () =>
-        runner.execute({ language: sub.language, source: sub.code, stdin: c.input, timeLimitMs: limits.timeLimitMs, memoryLimitMb: limits.memoryLimitMb }),
+        runner.execute({ language: sub.language, source: programSource(question.functionSpec, sub.language, sub.code), stdin: c.input, timeLimitMs: limits.timeLimitMs, memoryLimitMb: limits.memoryLimitMb }),
       );
       if (execution.status === 'compile_error') {
         compileOutput ??= execution.compileOutput ?? 'Compilation failed.';

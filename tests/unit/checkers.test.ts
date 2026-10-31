@@ -103,3 +103,42 @@ describe('judgeExecution', () => {
     expect(judgeExecution(exec({ stdout: '4\n' }), '3', trim).verdict).toBe('WA');
   });
 });
+
+describe('json checker', () => {
+  const check = (expected: string, actual: string, epsilon?: number) => runChecker({ type: 'json', epsilon }, expected, actual);
+
+  it('ignores whitespace and the spelling of equal numbers', () => {
+    expect(check('[0,1]\n', ' [ 0, 1 ]\n').ok).toBe(true);
+    expect(check('2.0\n', '2\n').ok).toBe(true);
+    expect(check('{"a":1,"b":[true,null]}', '{"b":[true,null],"a":1}').ok).toBe(true);
+    expect(check('"héllo \\n"', '"héllo \\u000a"').ok).toBe(true);
+  });
+
+  it('compares integers exactly, even beyond 53 bits', () => {
+    expect(check('9223372036854775807', '9223372036854775807').ok).toBe(true);
+    expect(check('9223372036854775807', '9223372036854775806').ok).toBe(false);
+    expect(check('[1,2]', '[1,3]').ok).toBe(false);
+  });
+
+  it('compares non-integers within the tolerance', () => {
+    expect(check('0.1', '0.10000001', 1e-5).ok).toBe(true);
+    expect(check('0.1', '0.11', 1e-5).ok).toBe(false);
+    expect(check('[1.5,2.5]', '[1.5,2.5000001]', 1e-5).ok).toBe(true);
+  });
+
+  it('tells apart types and shapes, and says where, never what was expected', () => {
+    expect(check('true', '1').ok).toBe(false);
+    expect(check('null', '0').ok).toBe(false);
+    expect(check('"1"', '1').ok).toBe(false);
+    expect(check('[[1],[2]]', '[[1],[3]]')).toEqual({ ok: false, message: 'The returned value differs at [1][0].' });
+    expect(check('[1,2]', '[1]').ok).toBe(false);
+    const wrong = check('[42]', '[43]');
+    expect(wrong.message).not.toMatch(/42/);
+  });
+
+  it('rejects output that is not one JSON value', () => {
+    expect(check('[1]', 'hello')).toEqual({ ok: false, message: 'The program did not print a single valid JSON value.' });
+    expect(check('[1]', '[1] [2]').ok).toBe(false);
+    expect(check('[1]', '').ok).toBe(false);
+  });
+});

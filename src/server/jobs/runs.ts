@@ -1,4 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
+import { programSource } from '../../shared/function-wrappers';
+import type { FunctionSpec } from '../../shared/function-spec';
 import { effectiveLimits } from '../../shared/languages';
 import { executionVerdict, judgeExecution } from '../../shared/checkers';
 import type { CheckerConfig, ValidationReport } from '../../shared/types';
@@ -18,17 +20,20 @@ interface RunPlan {
   timeLimitMs: number;
   memoryLimitMb: number;
   checker: CheckerConfig;
+  /** Function-style questions run the code inside their driver. */
+  functionSpec: FunctionSpec | null;
 }
 
 const SCRATCH_LIMITS = { timeLimitMs: 5000, memoryLimitMb: 512 };
 
 async function planRun(ctx: JobContext, run: Run): Promise<RunPlan> {
   if (run.questionId == null) {
-    return { cases: [{ label: 'Custom input', input: run.input ?? '', expected: null, testId: null, sample: false }], ...SCRATCH_LIMITS, checker: { type: 'trim' } };
+    return { cases: [{ label: 'Custom input', input: run.input ?? '', expected: null, testId: null, sample: false }], ...SCRATCH_LIMITS, checker: { type: 'trim' }, functionSpec: null };
   }
   const [question] = await ctx.db.select().from(questions).where(eq(questions.id, run.questionId));
   if (!question) throw new Error('The question no longer exists.');
   const limits = effectiveLimits(question, run.language, question.languageLimits);
+  const functionSpec = question.functionSpec ?? null;
   const samples: RunCase[] = question.samples.map((s, i) => ({
     label: `Sample ${i + 1}`,
     input: s.input,
@@ -39,9 +44,9 @@ async function planRun(ctx: JobContext, run: Run): Promise<RunPlan> {
 
   switch (run.kind) {
     case 'custom':
-      return { cases: [{ label: 'Custom input', input: run.input ?? '', expected: null, testId: null, sample: false }], ...limits, checker: question.checker };
+      return { cases: [{ label: 'Custom input', input: run.input ?? '', expected: null, testId: null, sample: false }], ...limits, checker: question.checker, functionSpec };
     case 'samples':
-      return { cases: samples, ...limits, checker: question.checker };
+      return { cases: samples, ...limits, checker: question.checker, functionSpec };
     case 'generate':
     case 'validate': {
       const tests = await ctx.db.select().from(testCases).where(eq(testCases.questionId, question.id)).orderBy(asc(testCases.position));
@@ -54,9 +59,9 @@ async function planRun(ctx: JobContext, run: Run): Promise<RunPlan> {
       }));
       if (run.kind === 'generate') {
         // Give a slow reference solution room to finish; validation reports real timings.
-        return { cases: testRuns, timeLimitMs: Math.min(15_000, limits.timeLimitMs * 3), memoryLimitMb: limits.memoryLimitMb, checker: question.checker };
+        return { cases: testRuns, timeLimitMs: Math.min(15_000, limits.timeLimitMs * 3), memoryLimitMb: limits.memoryLimitMb, checker: question.checker, functionSpec };
       }
-      return { cases: [...samples, ...testRuns], ...limits, checker: question.checker };
+      return { cases: [...samples, ...testRuns], ...limits, checker: question.checker, functionSpec };
     }
   }
 }
@@ -79,7 +84,7 @@ export async function processRun(ctx: JobContext, run: Run) {
       const execution = await ctx.pool.run('high', () =>
         ctx.runner.execute({
           language: run.language,
-          source: run.code,
+          source: programSource(plan.functionSpec, run.language, run.code),
           stdin: c.input,
           timeLimitMs: plan.timeLimitMs,
           memoryLimitMb: plan.memoryLimitMb,

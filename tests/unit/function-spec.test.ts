@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { literalToJson, parseNamedArgs, parsePythonSignature, toStdinTest, unsupportedType } from '../../src/shared/function-spec';
+import { literalToJson, needsWideInts, parseNamedArgs, parsePythonSignature, parseType, toStdinTest, unsupportedType } from '../../src/shared/function-spec';
 
 describe('literal parsing', () => {
   it('turns Python and JSON literals into compact JSON', () => {
@@ -100,5 +100,24 @@ describe('raw string results', () => {
     expect(toStdinTest(spec, 's = "abc"', '43/120', { rawText: true }).output).toBe('"43/120"\n');
     expect(toStdinTest(spec, 's = "abc"', '"quoted"').output).toBe('"quoted"\n');
     expect(() => toStdinTest(spec, 's = "abc"', 'MCDXXIII')).toThrow();
+  });
+});
+
+describe('type trees and wide integers', () => {
+  it('parses annotations into language-neutral types', () => {
+    expect(parseType('List[List[int]]')).toEqual({ k: 'list', of: { k: 'list', of: { k: 'int' } } });
+    expect(parseType('Optional[ListNode]')).toEqual({ k: 'listnode' });
+    expect(parseType('TreeNode')).toEqual({ k: 'treenode' });
+    expect(() => parseType('Optional[int]')).toThrow();
+    expect(() => parseType('Dict[str, int]')).toThrow();
+  });
+
+  it('notices integers beyond 32 bits in arguments and results, by type', () => {
+    const spec = { params: [{ name: 'a', type: 'List[int]' }, { name: 's', type: 'str' }], returnType: 'int' };
+    expect(needsWideInts(spec, [{ input: '[1,2]\n"x"\n', output: '3\n' }])).toBe(false);
+    expect(needsWideInts(spec, [{ input: '[3000000000]\n"x"\n', output: '1\n' }])).toBe(true);
+    expect(needsWideInts(spec, [{ input: '[1]\n"x"\n', output: '-2147483649\n' }])).toBe(true);
+    // A long number inside a string is not an integer argument.
+    expect(needsWideInts(spec, [{ input: '[1]\n"99999999999"\n', output: '1\n' }])).toBe(false);
   });
 });
