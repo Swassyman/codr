@@ -125,7 +125,7 @@ export default function ImportPage() {
               <Input
                 aria-label="Search the source"
                 className="pl-9"
-                placeholder={sourceId === 'codeforces' ? 'Name, tag or id like 1575A' : sourceId === 'atcoder' ? 'Name or task id like abc300_a' : 'Search by name or tag'}
+                placeholder={sourceId === 'codeforces' ? 'Name, tag or id like 1575A' : sourceId === 'atcoder' ? 'Name or task id like abc300_a' : sourceId === 'leetcode-dataset' ? 'Name, tag, difficulty or number, like "hash table" or 1' : 'Search by name or tag'}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />

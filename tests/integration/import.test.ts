@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestContext, createUser, TestClient, type TestContext } from '../helpers/context';
+import { eq } from 'drizzle-orm';
+import { questions } from '../../src/server/db/schema';
 import { findImported, saveImported } from '../../src/server/importers/registry';
 import type { NormalizedQuestion } from '../../src/server/importers/types';
 
@@ -76,8 +78,26 @@ describe('saving imports', () => {
     const client = new TestClient(ctx.app);
     await client.login('lister');
     const res = await client.get('/api/manage/import/sources');
-    expect(res.body.sources.map((s: { id: string }) => s.id)).toEqual(['code-contests', 'codeforces', 'atcoder', 'cses']);
+    expect(res.body.sources.map((s: { id: string }) => s.id)).toEqual(['code-contests', 'codeforces', 'atcoder', 'cses', 'leetcode-dataset']);
     for (const s of res.body.sources) expect(s.licenseNote.length).toBeGreaterThan(20);
     expect((await client.get('/api/manage/import/nope/search?q=x')).status).toBe(404);
+  });
+
+  it('keeps the function spec and checker of a function-style question', async () => {
+    const user = await createUser(ctx.db, 'fnimporter', 'creator');
+    const spec = { className: 'Solution', name: 'twoSum', params: [{ name: 'nums', type: 'List[int]' }, { name: 'target', type: 'int' }], returnType: 'float', unsupported: null };
+    const saved = await saveImported(
+      ctx.db,
+      'leetcode-dataset',
+      problem({ externalId: 'two-sum', functionSpec: spec, checker: { type: 'float', epsilon: 1e-5 }, tests: [{ input: '[1]\n2\n', output: '3.0\n' }] }),
+      user.id,
+      ctx.clock.now(),
+    );
+    const [row] = await ctx.db.select().from(questions).where(eq(questions.id, saved.id));
+    expect(row).toMatchObject({ functionSpec: spec, checker: { type: 'float', epsilon: 1e-5 } });
+    // Questions without one stay stdin-style.
+    const plain = await saveImported(ctx.db, 'code-contests', problem({ externalId: 'plain:1' }), user.id, ctx.clock.now());
+    const [plainRow] = await ctx.db.select().from(questions).where(eq(questions.id, plain.id));
+    expect(plainRow!.functionSpec).toBeNull();
   });
 });

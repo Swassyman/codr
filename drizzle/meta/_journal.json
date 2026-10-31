@@ -15,6 +15,13 @@
       "when": 1793211014459,
       "tag": "0001_contest_autocomplete_practice_hidden",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793431769804,
+      "tag": "0002_function_spec",
+      "breakpoints": true
     }
   ]
 }

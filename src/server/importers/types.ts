@@ -1,5 +1,6 @@
 import type { LanguageId } from '../../shared/languages';
-import type { Difficulty, Sample } from '../../shared/types';
+import type { FunctionSpec } from '../../shared/function-spec';
+import type { CheckerConfig, Difficulty, Sample } from '../../shared/types';
 import type { PoliteHttp } from './http';
 
 export interface SearchResult {
@@ -31,6 +32,9 @@ export interface NormalizedQuestion {
   memoryLimitMb: number | null;
   tests: { input: string; output: string }[];
   referenceSolution: { language: LanguageId; code: string } | null;
+  /** Function-style questions: the method to implement; tests are then in the stdin form of shared/function-spec. */
+  functionSpec?: FunctionSpec | null;
+  checker?: CheckerConfig;
   license: string;
   attribution: string;
 }

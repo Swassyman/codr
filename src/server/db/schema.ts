@@ -13,6 +13,7 @@ import {
   unique,
   varchar,
 } from 'drizzle-orm/pg-core';
+import type { FunctionSpec } from '../../shared/function-spec';
 import type { LanguageId } from '../../shared/languages';
 import { AUTOCOMPLETE_RULES } from '../../shared/types';
 import type {
@@ -93,6 +94,8 @@ export const questions = pgTable(
     points: integer().notNull().default(100),
     scoringMode: scoringModeEnum().notNull().default('tests'),
     checker: jsonb().$type<CheckerConfig>().notNull().default({ type: 'trim' }),
+    /** Set for function-style questions: the method participants implement (see shared/function-spec). */
+    functionSpec: jsonb().$type<FunctionSpec | null>(),
     /** Never sent to participants. */
     referenceSolution: jsonb().$type<ReferenceSolution | null>(),
     status: publishStatusEnum().notNull().default('draft'),

@@ -7,10 +7,11 @@ import { atcoderAdapter } from './atcoder';
 import { codeContestsAdapter } from './code-contests';
 import { codeforcesAdapter } from './codeforces';
 import { csesAdapter } from './cses';
+import { leetcodeDatasetAdapter } from './leetcode-dataset';
 import type { NormalizedQuestion, SourceAdapter } from './types';
 
 /** Every available source. Add a new adapter here (see README, "Adding an importer"). */
-export const ADAPTERS: SourceAdapter<any>[] = [codeContestsAdapter, codeforcesAdapter, atcoderAdapter, csesAdapter];
+export const ADAPTERS: SourceAdapter<any>[] = [codeContestsAdapter, codeforcesAdapter, atcoderAdapter, csesAdapter, leetcodeDatasetAdapter];
 
 export const adapterById = (id: string) => ADAPTERS.find((a) => a.info.id === id) ?? null;
 
@@ -49,6 +50,8 @@ export async function saveImported(db: DB, adapterId: string, q: NormalizedQuest
         memoryLimitMb: q.memoryLimitMb ?? 256,
         allowedLanguages: DEFAULT_LANGUAGES,
         referenceSolution: q.referenceSolution,
+        functionSpec: q.functionSpec ?? null,
+        ...(q.checker ? { checker: q.checker } : {}),
         status: 'draft',
         practice: false,
         source: { adapter: adapterId, externalId: q.externalId, url: q.url ?? undefined, license: q.license, attribution: q.attribution, importedAt: now.toISOString() },
