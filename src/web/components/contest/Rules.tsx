@@ -32,6 +32,15 @@ export function ContestRules({ contest, now }: { contest: ContestLobbyDTO; now: 
           ? 'After each submission you see how many tests passed.'
           : 'After each submission you see the result of every test.',
   });
+  rules.push({
+    key: 'autocomplete',
+    text:
+      contest.autocomplete === 'off'
+        ? 'Editor autocomplete is off for everyone.'
+        : contest.autocomplete === 'on'
+          ? 'Editor autocomplete is on for everyone.'
+          : 'You can turn editor autocomplete on or off in the editor. It starts off.',
+  });
   if (contest.recordIntegrity) {
     rules.push({ key: 'integrity', emphasis: true, text: 'This contest records when you switch away from its tab and when you paste into the editor. The organizer can see these records.' });
   }

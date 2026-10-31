@@ -13,7 +13,7 @@ const schema = z.object({
   /** Install missing Piston language packages on boot (needs internet once). */
   RUNNER_AUTO_INSTALL: flag(true),
   /** Piston packages to install: "python,gcc,node,java" or pinned "python=3.12.0". */
-  RUNNER_PACKAGES: z.string().default('python,gcc,node,java'),
+  RUNNER_PACKAGES: z.string().default('python,gcc,node,java,typescript,zig'),
   /** Programs executed in parallel against the runner. */
   RUNNER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(4),
 

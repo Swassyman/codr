@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { CHECKER_LABELS } from '../../../../shared/checkers';
 import { LANGUAGES, LANGUAGE_IDS, effectiveLimits, type LanguageId } from '../../../../shared/languages';
 import { CHECKER_TYPES, type CheckerType } from '../../../../shared/types';
-import { useRuntimes } from '../../../lib/runtimes';
+import { useLanguageLabel, useRuntimes } from '../../../lib/runtimes';
 import { CodeEditor } from '../../../components/CodeEditor';
 import { Button, Field, Input, Select, Switch } from '../../../components/ui';
 import { formatMs } from '../../../components/verdict';
@@ -24,6 +24,7 @@ const numberOrNull = (v: string) => (v === '' ? null : Number(v));
 
 export function SettingsTab({ values, update, errors }: TabProps) {
   const runtimes = useRuntimes();
+  const languageLabel = useLanguageLabel();
   const [starterLang, setStarterLang] = useState<LanguageId>(values.allowedLanguages[0] ?? 'cpp');
 
   const toggleLanguage = (id: LanguageId, on: boolean) => {
@@ -82,14 +83,14 @@ export function SettingsTab({ values, update, errors }: TabProps) {
                     <td className="py-2 pr-3">
                       <input
                         type="checkbox"
-                        aria-label={`Allow ${info.label}`}
+                        aria-label={`Allow ${languageLabel(id)}`}
                         className="size-4 accent-[var(--accent)]"
                         checked={allowed}
                         onChange={(e) => toggleLanguage(id, e.target.checked)}
                       />
                     </td>
                     <td className="py-2 pr-3">
-                      {info.label}
+                      {languageLabel(id)}
                       {!installed && runtimes.data && <span className="ml-2 text-xs text-warn">not installed on the runner</span>}
                     </td>
                     <td className="py-2 pr-3">
@@ -134,7 +135,7 @@ export function SettingsTab({ values, update, errors }: TabProps) {
           <Select aria-label="Starter code language" className="w-52" value={starterLang} onChange={(e) => setStarterLang(e.target.value as LanguageId)}>
             {values.allowedLanguages.map((l) => (
               <option key={l} value={l}>
-                {LANGUAGES[l].label}
+                {languageLabel(l)}
                 {values.starterCode[l] ? ' (custom)' : ''}
               </option>
             ))}
@@ -209,8 +210,25 @@ export function SettingsTab({ values, update, errors }: TabProps) {
         </Field>
       </Section>
 
-      <Section title="Practice" description="Published practice questions appear in the practice bank, except while they are in a contest that has not finished.">
-        <Switch label="Show in the practice bank" checked={values.practice} onCheckedChange={(practice) => update({ practice })} />
+      <Section
+        title="Practice"
+        description="Questions never appear in practice while a published contest containing them is upcoming or running. Once all such contests have finished, their questions are listed automatically."
+      >
+        <div className="flex max-w-xl flex-col gap-4">
+          <Switch
+            label="Show in the practice bank"
+            description="List it in practice even if it was never in a contest."
+            checked={values.practice}
+            disabled={values.practiceHidden}
+            onCheckedChange={(practice) => update({ practice })}
+          />
+          <Switch
+            label="Keep out of practice"
+            description="Never list it, not even after its contests have finished. Use it for questions you plan to reuse."
+            checked={values.practiceHidden}
+            onCheckedChange={(practiceHidden) => update({ practiceHidden })}
+          />
+        </div>
       </Section>
     </div>
   );

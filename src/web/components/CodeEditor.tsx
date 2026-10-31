@@ -6,6 +6,34 @@ import { Spinner } from './ui';
 
 export type MonacoEditor = Parameters<OnMount>[0];
 
+// Only word-based suggestions exist (no language services are bundled), but
+// "off" closes every completion path Monaco has: suggestions while typing, on
+// trigger characters and on demand, inline suggestions, parameter hints,
+// snippets, and accepting with Tab or Enter.
+const COMPLETION_ON = {
+  quickSuggestions: true,
+  wordBasedSuggestions: 'currentDocument',
+  suggestOnTriggerCharacters: true,
+  parameterHints: { enabled: true },
+  inlineSuggest: { enabled: true },
+  snippetSuggestions: 'inline',
+  tabCompletion: 'off',
+  acceptSuggestionOnEnter: 'on',
+  suggest: { showWords: true, showSnippets: true },
+} as const;
+
+const COMPLETION_OFF = {
+  quickSuggestions: false,
+  wordBasedSuggestions: 'off',
+  suggestOnTriggerCharacters: false,
+  parameterHints: { enabled: false },
+  inlineSuggest: { enabled: false },
+  snippetSuggestions: 'none',
+  tabCompletion: 'off',
+  acceptSuggestionOnEnter: 'off',
+  suggest: { showWords: false, showSnippets: false },
+} as const;
+
 interface CodeEditorProps {
   value: string;
   onChange?: (value: string) => void;
@@ -16,9 +44,11 @@ interface CodeEditorProps {
   className?: string;
   ariaLabel?: string;
   minimal?: boolean;
+  /** Editor autocompletion; off unless the caller turns it on. */
+  autocomplete?: boolean;
 }
 
-export function CodeEditor({ value, onChange, language, readOnly, onReady, className, ariaLabel = 'Code editor', minimal }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language, readOnly, onReady, className, ariaLabel = 'Code editor', minimal, autocomplete = false }: CodeEditorProps) {
   const theme = useResolvedTheme();
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
@@ -51,10 +81,7 @@ export function CodeEditor({ value, onChange, language, readOnly, onReady, class
           lineNumbers: minimal ? 'off' : 'on',
           folding: !minimal,
           glyphMargin: false,
-          wordBasedSuggestions: 'off',
-          quickSuggestions: false,
-          suggestOnTriggerCharacters: false,
-          parameterHints: { enabled: false },
+          ...(autocomplete ? COMPLETION_ON : COMPLETION_OFF),
           scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
           fixedOverflowWidgets: true,
         }}

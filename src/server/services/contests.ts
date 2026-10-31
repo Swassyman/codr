@@ -66,8 +66,12 @@ export async function contestProblems(db: DbOrTx, contest: Contest): Promise<Con
   return problems;
 }
 
-/** Settings that shape the experience and cannot change once the contest is running. */
-export const LOCKED_AFTER_START = ['timingMode', 'durationMinutes', 'defaultQuestionMinutes', 'viewOnce', 'sequential', 'startsAt'] as const;
+/**
+ * Settings that shape the experience and cannot change once the contest is
+ * running. Autocomplete is among them: switching it mid-contest would treat
+ * participants differently depending on when they worked.
+ */
+export const LOCKED_AFTER_START = ['timingMode', 'durationMinutes', 'defaultQuestionMinutes', 'viewOnce', 'sequential', 'startsAt', 'autocomplete'] as const;
 
 export const hasStarted = (c: Contest, now: Date) => c.status === 'published' && now.getTime() >= c.startsAt.getTime();
 

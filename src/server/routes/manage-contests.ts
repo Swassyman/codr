@@ -73,6 +73,7 @@ async function editorDTO(db: DB, contest: Contest, now: Date): Promise<ContestEd
     leaderboardEnabled: contest.leaderboardEnabled,
     leaderboardFreezeMinutes: contest.leaderboardFreezeMinutes,
     recordIntegrity: contest.recordIntegrity,
+    autocomplete: contest.autocomplete,
     joinCode: contest.joinCode,
     status: contest.status,
     started: hasStarted(contest, now),
@@ -151,7 +152,7 @@ export async function manageContestRoutes(app: FastifyInstance) {
         return patch[k] !== contest[k];
       });
       if (touched.length) {
-        throw conflict('contest_started', 'The contest has started, so its timing rules can no longer change. You can still extend the end time.', touched.map((path) => ({ path, message: 'Locked after the start.' })));
+        throw conflict('contest_started', 'The contest has started, so its timing and editor rules can no longer change. You can still extend the end time.', touched.map((path) => ({ path, message: 'Locked after the start.' })));
       }
     }
     const { startsAt, endsAt, ...rest } = patch;

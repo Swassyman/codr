@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { LANGUAGES } from '../../../shared/languages';
 import { VERDICT_LABELS, type TestVerdict } from '../../../shared/types';
 import type { SubmissionDTO, TestResultDTO } from '../../../shared/api';
 import { cn } from '../../lib/cn';
+import { useLanguageLabel } from '../../lib/runtimes';
 import { formatWhen } from '../../lib/format';
 import { useServerNow } from '../../lib/server-time';
 import { Spinner } from '../ui';
@@ -102,6 +102,7 @@ function Detail({ s }: { s: SubmissionDTO }) {
 
 export function SubmissionsPanel({ submissions, loading, limit }: { submissions: SubmissionDTO[]; loading: boolean; limit?: { used: number; max: number } | null }) {
   const now = useServerNow(30_000);
+  const languageLabel = useLanguageLabel();
   const [open, setOpen] = useState<number | null>(null);
   const latest = submissions[0];
   const expanded = open ?? (latest && latest.status === 'done' ? latest.id : null);
@@ -141,7 +142,7 @@ export function SubmissionsPanel({ submissions, loading, limit }: { submissions:
                         <span>{formatKb(s.memoryKb)}</span>
                       </>
                     )}
-                    <span className="text-ink-3">{LANGUAGES[s.language].label}</span>
+                    <span className="text-ink-3">{languageLabel(s.language)}</span>
                     {s.isAuto && <span className="text-ink-3">sent when time ran out</span>}
                   </span>
                   <span className="text-xs text-ink-3">{formatWhen(s.receivedAt, now)}</span>

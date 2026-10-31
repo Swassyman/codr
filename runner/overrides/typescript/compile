@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Codr override for the compile step of Piston's typescript package (see
+# runner/Dockerfile). The package runs a bare `tsc *.ts`, which targets ES5
+# without the modern standard library: Map, Set, BigInt, includes and friends
+# fail to compile. Target the bundled Node.js instead, and declare the Node.js
+# globals programs use to read input (the package ships no @types/node).
+
+rename 's/$/\.ts/' "$@" # Add .ts extension
+
+cat > codr-node.d.ts <<'DECL'
+declare var require: any;
+declare var module: any;
+declare var exports: any;
+declare var process: any;
+declare var Buffer: any;
+declare var console: any;
+declare module 'fs';
+declare module 'node:fs';
+declare module 'readline';
+declare module 'node:readline';
+DECL
+
+tsc --target es2022 --lib es2022 --module commonjs --skipLibCheck --pretty false *.ts

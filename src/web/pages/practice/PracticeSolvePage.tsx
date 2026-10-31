@@ -1,12 +1,13 @@
 import { Link, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
-import type { WorkspaceQuestionDTO } from '../../../shared/api';
+import type { PracticeWorkspaceDTO } from '../../../shared/api';
 import { api, errorMessage } from '../../lib/api';
 import { useUser } from '../../lib/auth';
 import { AppShell, Wordmark } from '../../components/AppShell';
 import { ErrorNote, Spinner } from '../../components/ui';
 import { Workspace } from '../../components/workspace/Workspace';
+import { FromContest } from '../../components/FromContest';
 
 export default function PracticeSolvePage() {
   const { slug } = useParams();
@@ -14,7 +15,7 @@ export default function PracticeSolvePage() {
   const base = `/api/practice/questions/${encodeURIComponent(slug ?? '')}`;
   const question = useQuery({
     queryKey: ['practice-question', slug],
-    queryFn: () => api.get<WorkspaceQuestionDTO>(base),
+    queryFn: () => api.get<PracticeWorkspaceDTO>(base),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
@@ -51,6 +52,7 @@ export default function PracticeSolvePage() {
           </Link>
           <span aria-hidden className="h-4 w-px bg-line" />
           <h1 className="truncate text-sm font-semibold">{q.title}</h1>
+          <FromContest contests={q.fromContests} className="hidden shrink-0 md:inline-flex" />
         </div>
       }
     />

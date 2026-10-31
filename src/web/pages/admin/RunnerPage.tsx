@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LANGUAGES, type LanguageId } from '../../../shared/languages';
+import { LANGUAGES, languageLabel, type LanguageId } from '../../../shared/languages';
 import type { RunnerStatusDTO } from '../../../shared/api';
 import { api, errorMessage } from '../../lib/api';
 import { useRun } from '../../lib/runs';
@@ -17,13 +17,13 @@ const setupText: Record<string, string> = {
   error: 'Setup stopped with an error.',
 };
 
-function LanguageCheck({ language, runId }: { language: LanguageId; runId: number | null }) {
+function LanguageCheck({ language, version, runId }: { language: LanguageId; version: string; runId: number | null }) {
   const run = useRun(runId);
   const result = run.data?.results[0];
   const passed = result && result.execution.status === 'ok' && result.execution.stdout.trim() === 'hello codr';
   return (
     <tr className="border-t border-line">
-      <td className="py-2.5 pr-4 font-medium">{LANGUAGES[language].label}</td>
+      <td className="py-2.5 pr-4 font-medium">{languageLabel(language, version)}</td>
       <td className="py-2.5 pr-4">
         {runId == null ? (
           <span className="text-ink-3">Not checked</span>
@@ -109,7 +109,7 @@ export default function RunnerPage() {
                 </thead>
                 <tbody>
                   {installed.map((rt) => (
-                    <LanguageCheck key={rt.language} language={rt.language} runId={runs[rt.language] ?? null} />
+                    <LanguageCheck key={rt.language} language={rt.language} version={rt.version} runId={runs[rt.language] ?? null} />
                   ))}
                 </tbody>
               </table>
@@ -130,7 +130,7 @@ export default function RunnerPage() {
             <dd>
               {installed.map((rt) => (
                 <span key={rt.language} className="block">
-                  {LANGUAGES[rt.language].label} <span className="text-ink-3">{rt.version}</span>
+                  {LANGUAGES[rt.language].label} <span className="text-ink-3">{LANGUAGES[rt.language].toolchain} {rt.version}</span>
                 </span>
               ))}
             </dd>

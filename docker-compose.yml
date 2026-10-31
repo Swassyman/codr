@@ -39,7 +39,8 @@ services:
       PISTON_MAX_CONCURRENT_JOBS: "64"
       PISTON_BODY_LIMIT: "64mb"
     volumes:
-      # Language packages are downloaded once (first boot) and kept here.
+      # Language packages (RUNNER_PACKAGES, installed by the web service on
+      # first boot) are downloaded once and kept here.
       - runner-packages:/piston/packages
     tmpfs:
       - /tmp:exec

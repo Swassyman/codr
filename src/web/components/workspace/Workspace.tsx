@@ -3,20 +3,22 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { toast } from 'sonner';
 import { Lock, WifiOff } from 'lucide-react';
+import { autocompleteEnabled } from '../../../shared/autocomplete';
 import { LANGUAGES, type LanguageId } from '../../../shared/languages';
 import type { SubmissionDTO, WorkspaceQuestionDTO } from '../../../shared/api';
 import { api, ApiError, errorMessage } from '../../lib/api';
+import { useUser } from '../../lib/auth';
 import { useConnectionState } from '../../lib/events';
 import { useMediaQuery, modKey } from '../../lib/media';
 import { monaco } from '../../lib/monaco';
 import { useRun } from '../../lib/runs';
-import { useRuntimes } from '../../lib/runtimes';
+import { useLanguageLabel, useRuntimes } from '../../lib/runtimes';
 import { serverClock } from '../../lib/server-time';
 import { cn } from '../../lib/cn';
 import { ThemeToggle } from '../AppShell';
 import { CodeEditor, type MonacoEditor } from '../CodeEditor';
 import { ProblemStatement } from '../ProblemStatement';
-import { Button, Kbd, Select, Tab, TabList, Tabs } from '../ui';
+import { Button, Kbd, Select, Switch, Tab, TabList, Tabs } from '../ui';
 import { CustomInputPanel, ExampleResultsPanel } from './RunPanels';
 import { SubmissionsPanel } from './SubmissionsPanel';
 import { useDrafts, type DraftState } from './useDrafts';
@@ -75,9 +77,39 @@ function pickLanguage(q: WorkspaceQuestionDTO, installed: Set<LanguageId>): Lang
   );
 }
 
+const FORCED_REASON = { on: 'This contest keeps autocomplete on.', off: 'This contest turns autocomplete off.' } as const;
+
+/** The participant's own autocomplete choice, per account on this device. Off until they turn it on. */
+function useAutocompletePreference(userId: number | null) {
+  const key = `codr-autocomplete:u${userId ?? 0}`;
+  const [value, setValue] = useState<boolean | null>(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored == null ? null : stored === 'on';
+    } catch {
+      return null;
+    }
+  });
+  const set = (next: boolean) => {
+    setValue(next);
+    try {
+      localStorage.setItem(key, next ? 'on' : 'off');
+    } catch {
+      // Not persisted; the choice still applies until the page closes.
+    }
+  };
+  return [value, set] as const;
+}
+
 export function Workspace({ question, endpoints, scope, bar, barRight, fuse, locked, submissionLimit, onPaste, onRefused, deadline }: WorkspaceProps) {
   const wide = useMediaQuery('(min-width: 1024px)');
   const runtimes = useRuntimes();
+  const languageLabel = useLanguageLabel();
+  const user = useUser();
+  const [autocompletePreference, setAutocompletePreference] = useAutocompletePreference(user?.id ?? null);
+  // The server decides whether the contest forces it; the stored choice only applies otherwise.
+  const policy = question.autocomplete;
+  const autocomplete = autocompleteEnabled(policy, autocompletePreference);
   const connection = useConnectionState();
   const [language, setLanguageState] = useState<LanguageId>(() => pickLanguage(question, runtimes.installed));
   const [bottomTab, setBottomTab] = useState<'custom' | 'examples' | 'submissions'>(question.samples.length ? 'examples' : 'custom');
@@ -237,10 +269,27 @@ export function Workspace({ question, endpoints, scope, bar, barRight, fuse, loc
         <Select aria-label="Language" className="h-8 w-auto min-w-36" value={language} disabled={!!locked} onChange={(e) => setLanguage(e.target.value as LanguageId)}>
           {usable.map((l) => (
             <option key={l} value={l}>
-              {LANGUAGES[l].label}
+              {languageLabel(l)}
             </option>
           ))}
         </Select>
+        <span className="flex items-center gap-2" title={policy.forced == null ? 'Word suggestions while you type' : FORCED_REASON[policy.forced ? 'on' : 'off']}>
+          <Switch
+            id="codr-autocomplete"
+            checked={autocomplete}
+            disabled={policy.forced != null}
+            onCheckedChange={setAutocompletePreference}
+          />
+          <label htmlFor="codr-autocomplete" className={cn('text-xs whitespace-nowrap', policy.forced == null ? 'cursor-pointer text-ink-2' : 'text-ink-3')}>
+            Autocomplete
+            {policy.forced != null && (
+              <>
+                <span className="hidden sm:inline"> · contest rule</span>
+                <span className="sr-only">. {FORCED_REASON[policy.forced ? 'on' : 'off']}</span>
+              </>
+            )}
+          </label>
+        </span>
         <span className={cn('hidden text-xs sm:inline', drafts.state === 'local' ? 'text-warn' : 'text-ink-3')} role="status">
           {locked ? '' : draftText[drafts.state]}
         </span>
@@ -268,7 +317,8 @@ export function Workspace({ question, endpoints, scope, bar, barRight, fuse, loc
         readOnly={!!locked}
         onChange={(next) => drafts.setCode(language, next)}
         onReady={onEditorReady}
-        ariaLabel={`${LANGUAGES[language].label} solution`}
+        ariaLabel={`${languageLabel(language)} solution`}
+        autocomplete={autocomplete}
       />
     </div>
   );

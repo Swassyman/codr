@@ -65,6 +65,9 @@ export function describeExit(code: number | null, signal: string | null) {
   return code != null ? `Exited with code ${code}` : 'The program stopped unexpectedly.';
 }
 
+/** Extension that Piston's compile scripts append to the submitted file name ("main.cpp" becomes "main.cpp.cpp"). */
+const APPENDED_EXTENSION: Partial<Record<LanguageId, string>> = { cpp: '.cpp', c: '.c', zig: '.zig' };
+
 /**
  * Makes compiler output refer to the user's file: strips Piston's renamed file
  * suffix and its chmod noise, and rewrites GCC's source snippets (which read the
@@ -72,11 +75,12 @@ export function describeExit(code: number | null, signal: string | null) {
  */
 export function cleanCompileOutput(output: string, language: LanguageId, originalSource: string) {
   const file = LANGUAGES[language].piston.fileName;
+  const appended = APPENDED_EXTENSION[language];
   const lines = originalSource.split('\n');
   return output
     .split('\n')
     .filter((l) => !/^chmod: cannot access 'a\.out'/.test(l))
-    .map((l) => l.replaceAll(`${file}.${language === 'cpp' ? 'cpp' : 'c'}`, file))
+    .map((l) => (appended ? l.replaceAll(`${file}${appended}`, file) : l))
     .map((l) => {
       if (language !== 'cpp' && language !== 'c') return l;
       const m = /^(\s*)(\d+) \| (.*)$/.exec(l);
@@ -98,12 +102,19 @@ export function compareVersions(a: string, b: string) {
   return 0;
 }
 
-/** Picks the newest installed runtime for each catalog language. */
+/** The package a runtime comes from: `runtime` for multi-language packages (gcc, node), else its language. */
+export const runtimePackage = (rt: PistonRuntime) => rt.runtime ?? rt.language;
+
+/**
+ * Picks the newest installed runtime for each catalog language, only from the
+ * package the catalog names: Deno also provides "typescript" and "javascript",
+ * but runs them differently from the tsc and Node.js packages.
+ */
 export function matchRuntimes(installed: PistonRuntime[]): Map<LanguageId, PistonRuntime> {
   const result = new Map<LanguageId, PistonRuntime>();
   for (const id of LANGUAGE_IDS) {
-    const target = LANGUAGES[id].piston.language;
-    const candidates = installed.filter((rt) => rt.language === target);
+    const { language, package: pkg } = LANGUAGES[id].piston;
+    const candidates = installed.filter((rt) => rt.language === language && runtimePackage(rt) === pkg);
     candidates.sort((a, b) => compareVersions(b.version, a.version));
     if (candidates[0]) result.set(id, candidates[0]);
   }

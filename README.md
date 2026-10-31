@@ -22,7 +22,7 @@ docker compose up -d
 
 Open http://localhost:3000 and sign in as **admin** / **codr-admin**. Change the password right away under **Users → Reset password** (or set `ADMIN_PASSWORD` in `.env` before the first start).
 
-The first start needs internet once: Docker pulls the images and builds the web image, and the runner downloads the language packages (C, C++, Python 3, Java and JavaScript by default, about 1.5 GB) into a persistent volume. After that Codr runs offline. Participants on the same network open `http://<server-ip>:3000`.
+The first start needs internet once: Docker pulls the images and builds the web and runner images, and the runner downloads the language packages (C, C++, Python 3, Java, JavaScript, TypeScript and Zig by default, about 1.3 GB) into a persistent volume. After that Codr runs offline. Participants on the same network open `http://<server-ip>:3000`.
 
 The first start also seeds demo content: five sample questions (with tests and reference solutions, validated automatically once the runner is ready) and three public demo contests, one per timing mode, open for 30 days.
 
@@ -42,7 +42,9 @@ Admins and contest creators work in the **Question bank**.
 1. **New question** opens the editor. It saves as you type; the indicator next to **Publish** shows the state.
 2. **Statement**: title, slug, difficulty or rating, tags, the statement, input and output format, constraints (one per row, rendered as a bullet list), examples with optional explanations, and notes. Text fields take Markdown with `$math$` and `$$display math$$` (KaTeX). The preview on the right is exactly what participants see. If you copied a whole problem from somewhere, **Paste a whole statement** splits it into the fields.
 3. **Tests**: add rows one at a time, drop a `.zip` of input/output pairs (`1.in`/`1.out` or `.ans`, `input/`/`output/` folders, Polygon `01`/`01.a`), or paste several tests at once (`===` between tests, `---` between input and output). Each test can be hidden, weighted, labelled and grouped; rows can be reordered, duplicated and deleted (with undo). Leave expected outputs empty and use **Fill outputs from a reference solution**: your solution runs on every input, you review the outputs, and you save the ones you want.
-4. **Limits and languages**: time and memory limits, per-language multipliers (Python and Java get more time by default), allowed languages, starter code, the output checker (exact, ignore trailing whitespace, token by token, numbers within a tolerance), points, and whether the question appears in practice.
+4. **Limits and languages**: time and memory limits, per-language multipliers (Python, Java, JavaScript and TypeScript get more time by default), allowed languages, starter code, the output checker (exact, ignore trailing whitespace, token by token, numbers within a tolerance), points, and practice (see [Practice](#practice)).
+
+Every language is named with the version the runner has installed, for example "C++17 (gcc 10.2.0)" or "Zig (zig 0.10.1)", in the editor, run results, submissions and the admin pages.
 5. **Validate**: runs the reference solution on the examples and every test with the real limits and reports each verdict and timing. Changing tests or limits marks the result stale.
 6. **Publish**. Codr asks for confirmation if the question has not passed validation.
 
@@ -63,13 +65,25 @@ In the **Contest builder**:
 
 3. **Questions**: add published questions from the bank, order them (they are lettered A, B, C…), and override points or minutes per question.
 4. **Navigation**: *View once* means a question locks for good once the participant moves to another one (the server records it, so reloading, opening a new tab or using another device does not get around it). *In order only* forbids skipping ahead. They can be combined.
-5. **Access**: public (listed and open to registration), invite code, or private (you add people by username). Guests can be allowed to join with the code and a name.
-6. **Limits, results and scoring**: submissions per question, runs per minute, whether hidden-test results are shown right away or after the contest, per-test detail or only counts, partial or all-or-nothing scoring, penalty minutes, the leaderboard switch, and integrity signals (tab switches and pastes, shown to you and announced to participants; informational only, they prevent nothing).
-7. **Publish**. Share the contest link or the join code. Timing rules lock once the contest starts; the end time can still be extended.
+5. **Editor**: whether participants get autocomplete. *Participant chooses* (the default, and what contests created before this setting use) puts a switch in the editor that starts off and is remembered per account on each device. *Always off* removes every completion path (suggestions while typing or on demand, parameter hints, inline suggestions, snippets); *Always on* keeps suggestions on and the switch locked. The server sends the rule with every question it opens, so the browser only applies it; like any in-browser feature, a modified browser could still ignore it. Completion suggests words from the participant's own code, since no language services are bundled.
+6. **Access**: public (listed and open to registration), invite code, or private (you add people by username). Guests can be allowed to join with the code and a name.
+7. **Limits, results and scoring**: submissions per question, runs per minute, whether hidden-test results are shown right away or after the contest, per-test detail or only counts, partial or all-or-nothing scoring, penalty minutes, the leaderboard switch, and integrity signals (tab switches and pastes, shown to you and announced to participants; informational only, they prevent nothing).
+8. **Publish**. Share the contest link or the join code. Timing rules and the autocomplete rule lock once the contest starts; the end time can still be extended.
 
 The **Results** page shows live standings, per-question scores and attempts, start and finish times and integrity counts; click a person to see their submissions, read their code, rejudge, and see their integrity timeline.
 
 All time rules are decided on the server, from the moment a request arrives. The browser clock only drives the countdown display and resynchronises with the server continuously. A submission that reached the server before the deadline counts, however long judging takes.
+
+### Practice
+
+The practice bank shows a published question when no published contest containing it is upcoming or running, and either:
+
+- it is marked **Show in the practice bank**, or
+- it was in at least one published contest, and every published contest containing it has finished.
+
+So once a contest is over, all of its questions become practice material, tagged "from *contest name*". The tag names only public contests and contests the viewer took part in. "Finished" is the last moment anyone can still work: the end time, or in personal-window mode the entry cutoff plus the window. Participants who finish early do not end it. Draft contests are ignored. Visibility is computed for each request, so nothing is written when a contest ends.
+
+To keep a question out of practice for good, for example one you plan to reuse, turn on **Keep out of practice** in its settings (`practiceHidden`). It overrides both rules.
 
 ## Importing questions
 
@@ -120,7 +134,7 @@ Register it in `ADAPTERS` in `registry.ts`; the UI and API pick it up automatica
 ```
 
 - **web**: one Node process. Fastify serves the API and the built React app. It also runs the **job worker**, which claims queued runs and submissions from Postgres (`FOR UPDATE SKIP LOCKED`) and sends programs to the runner through an execution pool that serves interactive runs before submission judging. The **expiry scheduler** handles per-question timers. Live updates (job status, contest changes, server time) go to the browser over Server-Sent Events. The web process never executes user code.
-- **runner**: [Piston](https://github.com/engineer-man/piston), behind the `Runner` interface (`src/server/runner/types.ts`) so the engine can be swapped. Every program runs in an isolate sandbox with no network, cgroup CPU-time, wall-time, memory and process limits, an output cap, its own filesystem with a private writable box, and an unprivileged user. `runner/Dockerfile` pins the image and patches two upstream issues that break judging with real test data: the 100 KB request limit and truncation of large stdin. Judge0 CE was not used because it requires cgroup v1, which current distributions no longer provide.
+- **runner**: [Piston](https://github.com/engineer-man/piston), behind the `Runner` interface (`src/server/runner/types.ts`) so the engine can be swapped. Every program runs in an isolate sandbox with no network, cgroup CPU-time, wall-time, memory and process limits, an output cap, its own filesystem with a private writable box, and an unprivileged user. `runner/Dockerfile` pins the image and patches two upstream issues that break judging with real test data: the 100 KB request limit and truncation of large stdin. Judge0 CE was not used because it requires cgroup v1, which current distributions no longer provide. The image also lets Codr replace a package's stage script: Piston's `typescript` package compiles with a bare `tsc`, which targets ES5 without `Map`, `Set` or `BigInt`, so `runner/overrides/typescript/compile` compiles for the bundled Node.js (ES2022) and declares the Node.js globals used to read input. Language versions come from the runner's `/api/v2/runtimes`; the server keeps the last list it saw (`GET /api/runtimes`) so labels keep their versions while the runner restarts.
 - **db**: Postgres 17 with Drizzle migrations (`drizzle/`), applied automatically on start.
 
 Key ideas in the code:
@@ -144,7 +158,7 @@ All settings are environment variables; see `.env.example` for the full list wit
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | `admin`, `codr-admin` | First admin, created when no admin exists. |
 | `SEED_ON_START` | `true` | Seed demo content into an empty database. |
 | `ALLOW_REGISTRATION` | `true` | Let people create participant accounts. |
-| `RUNNER_PACKAGES` | `python,gcc,node,java` | Language packages to install (`gcc` gives C and C++, `node` gives JavaScript; add `go`, `rust`). |
+| `RUNNER_PACKAGES` | `python,gcc,node,java,typescript,zig` | Language packages to install (`gcc` gives C and C++, `node` gives JavaScript; add `go`, `rust`). |
 | `RUNNER_CONCURRENCY` | `4` | Programs executed at the same time. |
 | `COOKIE_SECURE` | `false` | Set to `true` when serving over HTTPS. |
 | `FEATURE_LEADERBOARD_UI` | `false` | Show the leaderboard page for contests that enable it. |
@@ -159,18 +173,21 @@ npm run typecheck
 npm test             # unit + integration tests (uses a codr_test database on the dev Postgres)
 ```
 
-- Unit tests (`tests/unit`): timing and lock rules, checkers, scoring, runner result mapping, test import parsing, importer parsing.
-- Integration tests (`tests/integration`): the real API against Postgres with a deterministic fake runner (auth, CSRF, authoring, the submit → judge → verdict flow, contests in every timing mode, view-once across tabs and devices, auto-submit at expiry, reveal rules, guests, imports, user management). When the dev runner is reachable, extra tests run real programs in the sandbox (TLE, MLE, no network, large inputs, real judging, seed validation).
+- Unit tests (`tests/unit`): timing and lock rules, practice visibility, autocomplete rule resolution, checkers, scoring, runner result mapping and language catalog, test import parsing, importer parsing.
+- Integration tests (`tests/integration`): the real API against Postgres with a deterministic fake runner (auth, CSRF, authoring, the submit → judge → verdict flow, contests in every timing mode, view-once across tabs and devices, auto-submit at expiry, reveal rules, guests, imports, user management, practice visibility before, during and after contests, the autocomplete rule, Zig and TypeScript). When the dev runner is reachable, extra tests run real programs in the sandbox (TLE, MLE, no network, large inputs, real judging including Zig and TypeScript, seed validation). The TypeScript test needs a runner built from the current `runner/Dockerfile` (`docker compose up -d --build runner`). Point the tests at another runner with `RUNNER_URL`.
 - End-to-end (`e2e/`): a participant going through a view-once contest in a real browser. Against a running stack: `npx playwright install chromium && E2E_BASE_URL=http://localhost:3000 npx playwright test` (or set `CHROME_PATH` to a local Chrome).
 
 Project layout: `src/shared` (code used by both sides: schemas, timing, checkers, scoring, languages), `src/server` (API, jobs, runner, importers, seed), `src/web` (React app), `drizzle/` (migrations), `runner/` (runner image), `scripts/` (seed, dataset import), `tests/`, `e2e/`.
 
 ## Defaults and decisions
 
-- Stack: React + Vite with a Fastify API in one TypeScript repo; Postgres with Drizzle; Monaco and KaTeX bundled locally (no CDN), syntax highlighting only (no autocomplete).
-- Languages: C++17 and C (GCC with `-O2` enabled through a pragma, since Piston's GCC package compiles without optimisation), Python 3, Java (time limits include a 1.5 s allowance because the JVM compiles the source at run time), JavaScript.
+- Stack: React + Vite with a Fastify API in one TypeScript repo; Postgres with Drizzle; Monaco and KaTeX bundled locally (no CDN), syntax highlighting plus optional word-based autocomplete (no language services).
+- Languages: C++17 and C (GCC with `-O2` enabled through a pragma, since Piston's GCC package compiles without optimisation), Python 3, Java (time limits include a 1.5 s allowance because the JVM compiles the source at run time), JavaScript, TypeScript and Zig. Go and Rust are available when their packages are installed.
+- TypeScript: compiled by `tsc` (Piston's `typescript` package, 5.0.3) for its bundled Node.js 18, then run like JavaScript with the same limits. Read input with `require("fs").readFileSync(0, "utf8")`, as in the starter template. Type errors are compilation errors, and compilation runs in its own stage, so it does not count against the time limit. Deno's `typescript` runtime is never used. Pinning `typescript` below 4.6 breaks the compile step, which targets ES2022.
+- Zig: Piston's `zig` package (0.10.1), built with `-O ReleaseSafe`, so overflows and out-of-bounds accesses are runtime errors. A compile takes about 5 s of CPU and happens for every test case, like every other compiled language, so Zig submissions take longer to judge.
+- Autocomplete is a contest rule (participant chooses, always off, always on). Practice always lets the participant choose, and the editor starts with it off.
 - Samples are judged first in every submission and are worth no points.
-- Practice shows published questions marked for practice, except while they are part of a published contest that has not finished.
+- Practice shows published questions marked for practice, plus every question of a finished contest, except while a published contest containing them has not finished, and never questions kept out of practice. See [Practice](#practice).
 - Personal-window mode: the contest end is the entry cutoff; each participant gets the full duration from entering.
 - Per-question timers: the auto-submit uses the newest draft the server received before the deadline. The editor saves continuously and once more just before the deadline.
 - Guests exist for one contest and live in one browser, so view-once cannot be enforced across devices for guests; use accounts for strict contests.

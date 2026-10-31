@@ -3,9 +3,9 @@ import { Link, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { LANGUAGES } from '../../../shared/languages';
 import type { ContestResultsDTO, SubmissionDTO } from '../../../shared/api';
 import { api, errorMessage } from '../../lib/api';
+import { useLanguageLabel } from '../../lib/runtimes';
 import { formatWhen } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { AppShell } from '../../components/AppShell';
@@ -24,6 +24,7 @@ function CodeView({ id }: { id: number }) {
 function PersonDialog({ contestId, person, results, onClose }: { contestId: number; person: Person; results: ContestResultsDTO; onClose: () => void }) {
   const qc = useQueryClient();
   const now = Date.now();
+  const languageLabel = useLanguageLabel();
   const [openCode, setOpenCode] = useState<number | null>(null);
   const subs = useQuery({
     queryKey: ['contest-person-subs', contestId, person.userId],
@@ -61,7 +62,7 @@ function PersonDialog({ contestId, person, results, onClose }: { contestId: numb
                 <span className="tabular-nums">{s.score ?? '—'} / {s.maxScore}</span>
                 <span className="text-ink-2 tabular-nums">{formatMs(s.timeMs)}</span>
                 <span className="text-ink-2 tabular-nums">{formatKb(s.memoryKb)}</span>
-                <span className="text-ink-3">{LANGUAGES[s.language].label}</span>
+                <span className="text-ink-3">{languageLabel(s.language)}</span>
                 {s.isAuto && <span className="text-ink-3">sent at time-out</span>}
                 <span className="ml-auto text-xs text-ink-3">{formatWhen(s.receivedAt, now)}</span>
                 <Button size="sm" variant="ghost" onClick={() => setOpenCode(openCode === s.id ? null : s.id)}>

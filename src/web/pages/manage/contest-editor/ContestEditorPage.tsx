@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Copy, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { contestFieldsSchema, type ContestFields } from '../../../../shared/schemas';
-import { LANGUAGES, LANGUAGE_IDS } from '../../../../shared/languages';
+import { LANGUAGE_IDS } from '../../../../shared/languages';
 import type { ContestEditorDTO } from '../../../../shared/api';
 import { api, ApiError, errorMessage } from '../../../lib/api';
 import { useAutosave } from '../../../lib/autosave';
 import { cn } from '../../../lib/cn';
+import { useLanguageLabel } from '../../../lib/runtimes';
 import { AppShell } from '../../../components/AppShell';
 import { AutoTextarea, SaveIndicator } from '../../../components/form-bits';
 import { Button, ConfirmDialog, ErrorNote, Field, IconButton, Input, Spinner, Switch } from '../../../components/ui';
@@ -93,6 +94,7 @@ function pick(c: ContestEditorDTO): ContestFields {
     leaderboardEnabled: c.leaderboardEnabled,
     leaderboardFreezeMinutes: c.leaderboardFreezeMinutes,
     recordIntegrity: c.recordIntegrity,
+    autocomplete: c.autocomplete,
   };
 }
 
@@ -109,6 +111,7 @@ function Editor({ initial }: { initial: ContestEditorDTO }) {
   const [problems, setProblems] = useState<{ path: string; message: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const locked = meta.started;
+  const languageLabel = useLanguageLabel();
 
   const publish = useMutation({
     mutationFn: async () => {
@@ -263,6 +266,21 @@ function Editor({ initial }: { initial: ContestEditorDTO }) {
         <Switch label="In order only" description="Questions must be opened in order; no skipping ahead." checked={values.sequential} disabled={locked} onCheckedChange={(sequential) => update({ sequential })} />
       </Section>
 
+      <Section title="Editor" description="Autocomplete suggests words already in the participant's code. The rule is shown to participants and locks once the contest starts.">
+        <Choice
+          name="autocomplete"
+          value={values.autocomplete}
+          disabled={locked}
+          onChange={(autocomplete) => update({ autocomplete })}
+          options={[
+            { value: 'user_choice', label: 'Participant chooses', description: 'Each participant can turn it on in the editor. Off until they do.' },
+            { value: 'off', label: 'Always off', description: 'Nobody gets suggestions, hints or snippets.' },
+            { value: 'on', label: 'Always on', description: 'Everyone gets suggestions; it cannot be turned off.' },
+          ]}
+        />
+        {timingLocked && <p className="text-xs text-ink-3">{timingLocked}</p>}
+      </Section>
+
       <Section title="Access">
         <Choice
           name="visibility"
@@ -318,7 +336,7 @@ function Editor({ initial }: { initial: ContestEditorDTO }) {
                 checked={values.allowedLanguages.includes(l)}
                 onChange={(e) => update({ allowedLanguages: e.target.checked ? [...values.allowedLanguages, l] : values.allowedLanguages.filter((x) => x !== l) })}
               />
-              {LANGUAGES[l].label}
+              {languageLabel(l)}
             </label>
           ))}
         </div>

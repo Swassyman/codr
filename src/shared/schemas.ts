@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { LANGUAGE_IDS } from './languages';
-import { CHECKER_TYPES } from './types';
+import { AUTOCOMPLETE_RULES, CHECKER_TYPES } from './types';
 
 // Request schemas shared by the API (validation) and the web client (forms).
 
@@ -90,6 +90,7 @@ export const questionFieldsSchema = z.object({
   checker: checkerSchema,
   referenceSolution: z.object({ language: languageSchema, code: codeSchema }).nullable(),
   practice: z.boolean(),
+  practiceHidden: z.boolean(),
 });
 
 export const questionPatchSchema = questionFieldsSchema.partial();
@@ -174,6 +175,7 @@ export const contestFieldsSchema = z.object({
   leaderboardEnabled: z.boolean(),
   leaderboardFreezeMinutes: optionalMinutes(7 * 24 * 60),
   recordIntegrity: z.boolean(),
+  autocomplete: z.enum(AUTOCOMPLETE_RULES),
 });
 
 export const contestPatchSchema = contestFieldsSchema.partial();

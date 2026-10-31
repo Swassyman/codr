@@ -2,28 +2,16 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { draftSchema, idempotencyKeySchema, solveRunSchema, submitSchema } from '../../shared/schemas';
-import type { PracticeQuestionDTO, SubmissionDTO } from '../../shared/api';
+import { autocompletePolicy } from '../../shared/autocomplete';
+import type { PracticeQuestionDTO, PracticeWorkspaceDTO, SubmissionDTO } from '../../shared/api';
 import { questions, runs, submissions } from '../db/schema';
 import { badRequest, forbidden, notFound, parse } from '../lib/errors';
 import { requireUser } from '../auth/guards';
 import { FULL_VISIBILITY, createSubmission, loadDrafts, queuePosition, saveDraft, toSubmissionDTO } from '../services/submissions';
 import { allowedLanguages, assertLanguage, toWorkspace, userKey } from '../services/workspace';
+import { fromContests, practiceVisibleSql as practiceVisible } from '../services/practice';
 
 const slugParams = z.object({ slug: z.string().min(1).max(96) });
-
-/**
- * A question is in the practice bank when it is published, marked for
- * practice, and not part of a published contest that has not finished yet
- * (so practice can never leak a live contest's questions).
- */
-const practiceVisible = (now: Date) => sql`
-  ${questions.status} = 'published' AND ${questions.practice} = true AND NOT EXISTS (
-    SELECT 1 FROM contest_questions cq JOIN contests c ON c.id = cq.contest_id
-    WHERE cq.question_id = ${questions.id} AND c.status = 'published'
-      AND (CASE WHEN c.timing_mode = 'personal_window'
-                THEN c.ends_at + make_interval(mins => coalesce(c.duration_minutes, 0))
-                ELSE c.ends_at END) > ${now}
-  )`;
 
 export async function practiceRoutes(app: FastifyInstance) {
   const { db, runner, worker, config } = app.services;
@@ -58,6 +46,7 @@ export async function practiceRoutes(app: FastifyInstance) {
         ),
       )
       .orderBy(asc(questions.rating), asc(questions.title));
+    const sources = await fromContests(db, rows.map((r) => r.q.id), user.id, req.receivedAt);
     return {
       questions: rows.map(({ q, solved, attempted }) => ({
         id: q.id,
@@ -68,14 +57,20 @@ export async function practiceRoutes(app: FastifyInstance) {
         tags: q.tags,
         solved,
         attempted,
+        fromContests: sources.get(q.id) ?? [],
       })),
     };
   });
 
-  app.get('/api/practice/questions/:slug', async (req) => {
+  app.get('/api/practice/questions/:slug', async (req): Promise<PracticeWorkspaceDTO> => {
     const user = practiceUser(req);
     const q = await loadPracticeQuestion(req);
-    return toWorkspace(q, allowedLanguages(q), await loadDrafts(db, user.id, null, q.id), q.points);
+    const sources = await fromContests(db, [q.id], user.id, req.receivedAt);
+    return {
+      // Practice has no contest rule: autocompletion is the participant's choice.
+      ...toWorkspace(q, allowedLanguages(q), await loadDrafts(db, user.id, null, q.id), q.points, autocompletePolicy(null)),
+      fromContests: sources.get(q.id) ?? [],
+    };
   });
 
   app.put('/api/practice/questions/:slug/draft', { config: { rateLimit: { max: 120, timeWindow: '1 minute', keyGenerator: userKey } } }, async (req) => {

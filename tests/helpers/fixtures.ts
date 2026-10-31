@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { DB } from '../../src/server/db';
 import { contestQuestions, contests, questions, testCases } from '../../src/server/db/schema';
+import type { LanguageId } from '../../src/shared/languages';
 import type { Sample } from '../../src/shared/types';
 
 export interface QuestionFixture {
@@ -10,6 +11,8 @@ export interface QuestionFixture {
   tests?: { input: string; output: string; hidden?: boolean; points?: number | null; group?: string | null }[];
   points?: number;
   practice?: boolean;
+  practiceHidden?: boolean;
+  allowedLanguages?: LanguageId[];
   status?: 'draft' | 'published';
   scoringMode?: 'tests' | 'groups';
   authorId?: number | null;
@@ -27,9 +30,10 @@ export async function createQuestion(db: DB, f: QuestionFixture = {}) {
       slug: f.slug ?? `sum-${n}-${Math.random().toString(36).slice(2, 7)}`,
       statement: 'Print the sum of the numbers.',
       samples: f.samples ?? [{ input: '1 2\n', output: '3\n' }],
-      allowedLanguages: ['cpp', 'python', 'java', 'javascript', 'c'],
+      allowedLanguages: f.allowedLanguages ?? ['cpp', 'python', 'java', 'javascript', 'c'],
       points: f.points ?? 100,
       practice: f.practice ?? true,
+      practiceHidden: f.practiceHidden ?? false,
       status: f.status ?? 'published',
       scoringMode: f.scoringMode ?? 'tests',
       authorId: f.authorId ?? null,

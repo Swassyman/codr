@@ -5,6 +5,7 @@ import { CircleCheck, CircleDot, Search } from 'lucide-react';
 import type { PracticeQuestionDTO } from '../../../shared/api';
 import { api, errorMessage } from '../../lib/api';
 import { AppShell } from '../../components/AppShell';
+import { FromContest } from '../../components/FromContest';
 import { EmptyState, ErrorNote, Input, PageHeader, Spinner } from '../../components/ui';
 
 const difficultyLabel = { easy: 'Easy', medium: 'Medium', hard: 'Hard' } as const;
@@ -39,7 +40,7 @@ export default function PracticeListPage() {
         <ErrorNote>{errorMessage(list.error)}</ErrorNote>
       ) : questions.length === 0 ? (
         <EmptyState title={search ? `Nothing matches "${search}".` : 'No practice questions yet.'}>
-          {search ? 'Try another word.' : 'Organizers choose which published questions appear here. Questions in an unfinished contest stay hidden until it ends.'}
+          {search ? 'Try another word.' : 'Organizers choose which published questions appear here, and questions from a contest arrive once it has ended.'}
         </EmptyState>
       ) : (
         <ul className="divide-y divide-line border-y border-line">
@@ -52,6 +53,7 @@ export default function PracticeListPage() {
                 <span className="min-w-0 flex-1">
                   <span className="font-medium text-ink">{q.title}</span>
                   {q.tags.length > 0 && <span className="ml-3 text-xs text-ink-3">{q.tags.join(', ')}</span>}
+                  {q.fromContests[0] && <FromContest contests={q.fromContests} className="ml-3" />}
                 </span>
                 <span className="text-sm text-ink-2">{q.difficulty ? difficultyLabel[q.difficulty] : ''}</span>
                 <span className="w-12 text-right text-sm text-ink-3 tabular-nums">{q.rating ?? ''}</span>

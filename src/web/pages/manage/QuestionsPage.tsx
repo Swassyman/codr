@@ -135,7 +135,11 @@ export default function QuestionsPage() {
                   </td>
                   <td className="py-3 pr-4">
                     <StatusPill status={q.status} />
-                    {q.practice && <span className="ml-1.5 text-xs text-ink-3">practice</span>}
+                    {q.practiceHidden ? (
+                      <span className="ml-1.5 text-xs text-ink-3">kept out of practice</span>
+                    ) : (
+                      q.practice && <span className="ml-1.5 text-xs text-ink-3">practice</span>
+                    )}
                   </td>
                   <td className="py-3 pr-4 text-right tabular-nums text-ink-2">{q.usedIn || '—'}</td>
                   <td className="py-3 whitespace-nowrap text-ink-2">{formatWhen(q.updatedAt, now)}</td>

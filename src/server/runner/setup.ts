@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { compareVersions, type PistonRuntime } from './piston';
+import { compareVersions, runtimePackage, type PistonRuntime } from './piston';
 
 export interface RunnerSetupState {
   state: 'disabled' | 'waiting' | 'checking' | 'installing' | 'ready' | 'error';
@@ -27,9 +27,9 @@ export function parsePackageSpec(spec: string) {
     });
 }
 
-/** A package counts as installed when some runtime is provided by it. */
+/** A package counts as installed when some runtime is provided by it (Deno's "typescript" is not the typescript package). */
 export function isPackageInstalled(name: string, runtimes: PistonRuntime[]) {
-  return runtimes.some((rt) => rt.runtime === name || rt.language === name);
+  return runtimes.some((rt) => runtimePackage(rt) === name);
 }
 
 /**

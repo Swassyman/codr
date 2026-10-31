@@ -9,6 +9,7 @@ import {
   type PistonStage,
 } from '../../src/server/runner/piston';
 import { isPackageInstalled, parsePackageSpec } from '../../src/server/runner/setup';
+import { DEFAULT_LANGUAGES, LANGUAGES, LANGUAGE_IDS, effectiveLimits, languageLabel } from '../../src/shared/languages';
 import type { ExecuteRequest } from '../../src/server/runner/types';
 
 const req = (over: Partial<ExecuteRequest> = {}): ExecuteRequest => ({
@@ -102,6 +103,16 @@ describe('compiler output cleanup', () => {
     );
   });
 
+  it("strips the extension Zig's compile script appends", () => {
+    const output = 'main.zig.zig:3:11: error: unused local constant\n    const x: u32 = "a";\n          ^';
+    expect(cleanCompileOutput(output, 'zig', '')).toBe('main.zig:3:11: error: unused local constant\n    const x: u32 = "a";\n          ^');
+  });
+
+  it('leaves tsc output alone (the file is already main.ts)', () => {
+    const output = "main.ts(1,5): error TS2322: Type 'string' is not assignable to type 'number'.";
+    expect(cleanCompileOutput(output, 'typescript', 'let x: number = "s";')).toBe(output);
+  });
+
   it('prepends the optimisation pragma and resets line numbers for C/C++ only', () => {
     expect(prepareSource('cpp', 'int main(){}')).toBe('#pragma GCC optimize("O2")\n#line 1\nint main(){}');
     expect(prepareSource('python', 'print(1)')).toBe('print(1)');
@@ -130,6 +141,34 @@ describe('runtime and package selection', () => {
     expect(m.has('java')).toBe(false);
   });
 
+  it('maps Zig and TypeScript to their own packages, never to Deno', () => {
+    const installed = [
+      { language: 'typescript', version: '1.32.3', aliases: [], runtime: 'deno' },
+      { language: 'javascript', version: '1.32.3', aliases: [], runtime: 'deno' },
+      { language: 'javascript', version: '20.11.1', aliases: [], runtime: 'node' },
+      { language: 'zig', version: '0.10.1', aliases: [] },
+    ];
+    let m = matchRuntimes(installed);
+    expect(m.has('typescript')).toBe(false);
+    expect(m.get('javascript')).toMatchObject({ version: '20.11.1', runtime: 'node' });
+    expect(m.get('zig')?.version).toBe('0.10.1');
+    m = matchRuntimes([...installed, { language: 'typescript', version: '5.0.3', aliases: ['ts'] }]);
+    expect(m.get('typescript')).toEqual({ language: 'typescript', version: '5.0.3', aliases: ['ts'] });
+  });
+
+  it('keeps matching every existing catalog language to its package', () => {
+    const live = [
+      { language: 'c', version: '10.2.0', aliases: [], runtime: 'gcc' },
+      { language: 'c++', version: '10.2.0', aliases: [], runtime: 'gcc' },
+      { language: 'java', version: '15.0.2', aliases: [] },
+      { language: 'javascript', version: '20.11.1', aliases: [], runtime: 'node' },
+      { language: 'python', version: '3.12.0', aliases: [] },
+      { language: 'go', version: '1.16.2', aliases: [] },
+      { language: 'rust', version: '1.68.2', aliases: [] },
+    ];
+    expect([...matchRuntimes(live).keys()].sort()).toEqual(['c', 'cpp', 'go', 'java', 'javascript', 'python', 'rust']);
+  });
+
   it('parses the package list and recognises installed packages', () => {
     expect(parsePackageSpec('python, gcc=10.2.0,,node')).toEqual([
       { name: 'python', version: null },
@@ -139,5 +178,34 @@ describe('runtime and package selection', () => {
     const runtimes = [{ language: 'javascript', version: '20.11.1', aliases: [], runtime: 'node' }];
     expect(isPackageInstalled('node', runtimes)).toBe(true);
     expect(isPackageInstalled('python', runtimes)).toBe(false);
+    // Deno provides a "typescript" language, but it is not the typescript package.
+    expect(isPackageInstalled('typescript', [{ language: 'typescript', version: '1.32.3', aliases: [], runtime: 'deno' }])).toBe(false);
+    expect(isPackageInstalled('typescript', [{ language: 'typescript', version: '5.0.3', aliases: [] }])).toBe(true);
+  });
+});
+
+describe('language catalog', () => {
+  it('names languages with the installed version, or the toolchain alone', () => {
+    expect(languageLabel('cpp', '10.2.0')).toBe('C++17 (gcc 10.2.0)');
+    expect(languageLabel('typescript', '5.0.3')).toBe('TypeScript (tsc 5.0.3)');
+    expect(languageLabel('zig', '0.10.1')).toBe('Zig (zig 0.10.1)');
+    expect(languageLabel('python')).toBe('Python 3 (CPython)');
+  });
+
+  it('installs Zig and TypeScript by default and gives every language a runner mapping', () => {
+    expect(DEFAULT_LANGUAGES).toEqual(expect.arrayContaining(['typescript', 'zig']));
+    for (const id of LANGUAGE_IDS) {
+      const info = LANGUAGES[id];
+      expect(info.id).toBe(id);
+      expect(info.piston.package && info.piston.fileName && info.hello && info.template && info.monaco).toBeTruthy();
+    }
+    expect(LANGUAGES.typescript.piston).toEqual({ language: 'typescript', package: 'typescript', fileName: 'main' });
+    expect(LANGUAGES.zig.piston).toEqual({ language: 'zig', package: 'zig', fileName: 'main.zig' });
+  });
+
+  it('scales limits for TypeScript like JavaScript (tsc compiles in a separate, uncounted stage)', () => {
+    const base = { timeLimitMs: 1000, memoryLimitMb: 256 };
+    expect(effectiveLimits(base, 'typescript')).toEqual(effectiveLimits(base, 'javascript'));
+    expect(effectiveLimits(base, 'zig')).toEqual({ timeLimitMs: 1000, memoryLimitMb: 256 });
   });
 });

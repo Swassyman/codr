@@ -72,7 +72,7 @@ export function participantDeadline(contest: ContestTiming, participant: Partici
 }
 
 /** The last moment anyone can still be working (personal windows run past the cutoff). */
-export function contestFinalEnd(contest: ContestTiming): Date {
+export function contestFinalEnd(contest: Pick<ContestTiming, 'timingMode' | 'endsAt' | 'durationMinutes'>): Date {
   return contest.timingMode === 'personal_window' ? addMinutes(contest.endsAt, contest.durationMinutes ?? 0) : contest.endsAt;
 }
 

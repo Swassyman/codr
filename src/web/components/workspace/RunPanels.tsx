@@ -1,5 +1,6 @@
 import type { RunCaseDTO, RunDTO } from '../../../shared/api';
 import { cn } from '../../lib/cn';
+import { useLanguageLabel } from '../../lib/runtimes';
 import { AutoTextarea } from '../form-bits';
 import { Spinner } from '../ui';
 import { VerdictBadge, formatKb, formatMs } from '../verdict';
@@ -55,6 +56,7 @@ function CompileError({ output }: { output: string }) {
 }
 
 export function CustomInputPanel({ input, onInput, run, running, onRun }: { input: string; onInput: (v: string) => void; run: RunDTO | undefined; running: boolean; onRun: () => void }) {
+  const languageLabel = useLanguageLabel();
   const result = run?.results[0];
   const e = result?.execution;
   return (
@@ -80,7 +82,10 @@ export function CustomInputPanel({ input, onInput, run, running, onRun }: { inpu
         />
       </div>
       <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="text-xs font-medium text-ink-3">Output</span>
+        <span className="flex items-baseline justify-between gap-3 text-xs text-ink-3">
+          <span className="font-medium">Output</span>
+          {run && !running && <span className="truncate">{languageLabel(run.language)}</span>}
+        </span>
         {running ? (
           <Waiting run={run} />
         ) : !e ? (
@@ -123,6 +128,7 @@ function DiffOutput({ expected, actual }: { expected: string; actual: string }) 
 }
 
 export function ExampleResultsPanel({ run, running, hasSamples }: { run: RunDTO | undefined; running: boolean; hasSamples: boolean }) {
+  const languageLabel = useLanguageLabel();
   if (!hasSamples) return <p className="p-4 text-sm text-ink-3">This question has no examples. Use the custom input tab.</p>;
   if (running) return <div className="p-4"><Waiting run={run} /></div>;
   if (!run) return <p className="p-4 text-sm text-ink-3">Run your code on the examples to compare its output with the expected output.</p>;
@@ -140,6 +146,7 @@ export function ExampleResultsPanel({ run, running, hasSamples }: { run: RunDTO 
     <div className="flex h-full min-h-0 flex-col gap-5 overflow-auto p-4">
       <p className="text-sm text-ink-2">
         {passed === run.results.length ? 'Every example passes.' : `${passed} of ${run.results.length} examples pass.`} Passing the examples does not guarantee the hidden tests pass.
+        <span className="ml-2 text-xs text-ink-3">{languageLabel(run.language)}</span>
       </p>
       {run.results.map((r) => (
         <section key={r.label} aria-label={r.label}>

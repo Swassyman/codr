@@ -49,6 +49,7 @@ function pickFields(q: QuestionEditorDTO): QuestionForm {
     checker: q.checker,
     referenceSolution: q.referenceSolution,
     practice: q.practice,
+    practiceHidden: q.practiceHidden,
   };
 }
 

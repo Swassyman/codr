@@ -36,6 +36,13 @@ export interface Sample {
   explanation?: string;
 }
 
+/**
+ * Contest rule for editor autocompletion: forced off, forced on, or left to
+ * each participant (practice always behaves like user_choice).
+ */
+export const AUTOCOMPLETE_RULES = ['off', 'on', 'user_choice'] as const;
+export type AutocompleteRule = (typeof AUTOCOMPLETE_RULES)[number];
+
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type ScoringMode = 'tests' | 'groups';
 

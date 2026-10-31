@@ -1,10 +1,22 @@
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'drizzle-orm';
-import { LANGUAGES } from '../../shared/languages';
+import { LANGUAGES, type LanguageId } from '../../shared/languages';
+import type { RuntimesResponse } from '../../shared/api';
 import { requireRole, requireUser } from '../auth/guards';
+import type { RuntimeInfo } from '../runner/types';
 
 export async function systemRoutes(app: FastifyInstance) {
   const { db, runner, clock, events, pool, setup } = app.services;
+
+  // Installed versions as last reported by the runner (which caches its own
+  // list briefly). Kept so language labels still show versions while the
+  // runner restarts; the client falls back to plain labels before the first answer.
+  let knownVersions: Partial<Record<LanguageId, string>> = {};
+  const runtimes = async (): Promise<RuntimeInfo[]> => {
+    const list = await runner.runtimes();
+    knownVersions = Object.fromEntries(list.map((rt) => [rt.language, rt.version]));
+    return list;
+  };
 
   app.get('/api/health', async () => {
     await db.execute(sql`select 1`);
@@ -12,26 +24,27 @@ export async function systemRoutes(app: FastifyInstance) {
   });
 
   /** Languages the runner can execute right now. */
-  app.get('/api/runtimes', async (req) => {
+  app.get('/api/runtimes', async (req): Promise<RuntimesResponse> => {
     requireUser(req);
     try {
-      const runtimes = await runner.runtimes();
+      const list = await runtimes();
       return {
         reachable: true,
-        languages: runtimes.map((rt) => ({ id: rt.language, label: LANGUAGES[rt.language].label, version: rt.version })),
+        languages: list.map((rt) => ({ id: rt.language, label: LANGUAGES[rt.language].label, version: rt.version })),
+        versions: knownVersions,
       };
     } catch {
-      return { reachable: false, languages: [] };
+      return { reachable: false, languages: [], versions: knownVersions };
     }
   });
 
   app.get('/api/admin/runner', async (req) => {
     requireRole(req, 'admin');
-    let runtimes: Awaited<ReturnType<typeof runner.runtimes>> = [];
+    let installed: RuntimeInfo[] = [];
     let reachable = true;
     let error: string | null = null;
     try {
-      runtimes = await runner.runtimes();
+      installed = await runtimes();
     } catch (err) {
       reachable = false;
       error = (err as Error).message;
@@ -44,7 +57,7 @@ export async function systemRoutes(app: FastifyInstance) {
       engine: runner.engine,
       reachable,
       error,
-      runtimes,
+      runtimes: installed,
       setup: setup?.status ?? null,
       queue: queue.rows[0],
       pool: pool.stats,

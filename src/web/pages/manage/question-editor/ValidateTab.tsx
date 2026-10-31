@@ -7,7 +7,7 @@ import type { ValidationReport } from '../../../../shared/types';
 import { api, errorMessage } from '../../../lib/api';
 import { formatWhen } from '../../../lib/format';
 import { useRun } from '../../../lib/runs';
-import { useRuntimes } from '../../../lib/runtimes';
+import { useLanguageLabel, useRuntimes } from '../../../lib/runtimes';
 import { cn } from '../../../lib/cn';
 import { CodeEditor } from '../../../components/CodeEditor';
 import { Button, ErrorNote, Notice, Select, Spinner } from '../../../components/ui';
@@ -25,6 +25,7 @@ function TimeBar({ ms, limit }: { ms: number | null; limit: number }) {
 }
 
 function Report({ report, stale }: { report: ValidationReport; stale: boolean }) {
+  const languageLabel = useLanguageLabel();
   const slow = report.maxTimeMs != null && report.maxTimeMs > report.timeLimitMs * 0.5;
   return (
     <div className="flex flex-col gap-3">
@@ -35,7 +36,7 @@ function Report({ report, stale }: { report: ValidationReport; stale: boolean })
             {report.ok ? 'The reference solution passes every case.' : `${report.cases.filter((c) => c.verdict !== 'AC').length} of ${report.cases.length} cases failed.`}
           </p>
           <p className="text-ink-2">
-            {LANGUAGES[report.language].label}, slowest case {formatMs(report.maxTimeMs)} of a {formatMs(report.timeLimitMs)} limit. Ran {formatWhen(report.ranAt, Date.now())}.
+            {languageLabel(report.language)}, slowest case {formatMs(report.maxTimeMs)} of a {formatMs(report.timeLimitMs)} limit. Ran {formatWhen(report.ranAt, Date.now())}.
           </p>
         </div>
       </div>
@@ -87,6 +88,7 @@ function Report({ report, stale }: { report: ValidationReport; stale: boolean })
 export function ValidateTab({ questionId, values, update, meta, flush }: TabProps & { questionId: number; meta: QuestionEditorDTO; flush: () => Promise<void> }) {
   const qc = useQueryClient();
   const runtimes = useRuntimes();
+  const languageLabel = useLanguageLabel();
   const reference = values.referenceSolution;
   const language: LanguageId = reference?.language ?? values.allowedLanguages.find((l) => runtimes.installed.has(l)) ?? 'cpp';
   const code = reference?.code ?? '';
@@ -121,7 +123,7 @@ export function ValidateTab({ questionId, values, update, meta, flush }: TabProp
           <h2 className="font-semibold">Reference solution</h2>
           <p className="mt-1 text-sm text-ink-2">
             A correct solution, never shown to participants. Validation runs it on the examples and every test with the real limits (
-            {formatMs(effectiveLimits(values, language, values.languageLimits).timeLimitMs)} for {LANGUAGES[language].label}).
+            {formatMs(effectiveLimits(values, language, values.languageLimits).timeLimitMs)} for {languageLabel(language)}).
           </p>
         </div>
         <Select
@@ -135,7 +137,7 @@ export function ValidateTab({ questionId, values, update, meta, flush }: TabProp
         >
           {LANGUAGE_IDS.filter((l) => runtimes.installed.has(l)).map((l) => (
             <option key={l} value={l}>
-              {LANGUAGES[l].label}
+              {languageLabel(l)}
             </option>
           ))}
         </Select>

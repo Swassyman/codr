@@ -14,6 +14,7 @@ import {
   type AccessDecision,
   type LockReason,
 } from '../../shared/timing';
+import { autocompletePolicy } from '../../shared/autocomplete';
 import { questionLetter } from '../../shared/letters';
 import { draftSchema, idempotencyKeySchema, integrityBatchSchema, joinSchema, solveRunSchema, submitSchema } from '../../shared/schemas';
 import type { ContestLobbyDTO, ContestQuestionDTO, ContestStateDTO, LeaderboardDTO, QuestionNavState } from '../../shared/api';
@@ -182,6 +183,7 @@ export async function contestPlayRoutes(app: FastifyInstance) {
       penaltyMinutes: c.penaltyMinutes,
       recordIntegrity: c.recordIntegrity,
       leaderboardEnabled: c.leaderboardEnabled && config.FEATURE_LEADERBOARD_UI,
+      autocomplete: c.autocomplete,
     };
   }
 
@@ -315,7 +317,13 @@ export async function contestPlayRoutes(app: FastifyInstance) {
     const item = opened.state.items[opened.index]!;
     const stats = (await userSubmissionStats(id, user.id)).get(qid);
     return {
-      ...toWorkspace(q!, allowedLanguages(q!, opened.state.contest.allowedLanguages), await loadDrafts(db, user.id, id, qid), item.points ?? q!.points),
+      ...toWorkspace(
+        q!,
+        allowedLanguages(q!, opened.state.contest.allowedLanguages),
+        await loadDrafts(db, user.id, id, qid),
+        item.points ?? q!.points,
+        autocompletePolicy(opened.state.contest.autocomplete),
+      ),
       letter: questionLetter(opened.index),
       deadline: opened.deadline?.toISOString() ?? null,
       maxSubmissions: opened.state.contest.maxSubmissionsPerQuestion,

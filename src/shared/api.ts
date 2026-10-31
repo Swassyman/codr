@@ -1,5 +1,7 @@
+import type { AutocompletePolicy } from './autocomplete';
 import type { LanguageId } from './languages';
 import type {
+  AutocompleteRule,
   CheckerConfig,
   Difficulty,
   ExecutionSummary,
@@ -38,7 +40,10 @@ export interface RuntimeDTO {
 
 export interface RuntimesResponse {
   reachable: boolean;
+  /** Languages the runner can execute right now (empty when unreachable). */
   languages: RuntimeDTO[];
+  /** Installed versions for labels; the last ones seen when the runner is unreachable. */
+  versions: Partial<Record<LanguageId, string>>;
 }
 
 export interface RunCaseDTO {
@@ -74,6 +79,7 @@ export interface QuestionListItemDTO {
   tags: string[];
   status: 'draft' | 'published';
   practice: boolean;
+  practiceHidden: boolean;
   testCount: number;
   usedIn: number;
   validationState: ValidationState;
@@ -107,6 +113,7 @@ export interface QuestionEditorDTO {
   referenceSolution: ReferenceSolution | null;
   status: 'draft' | 'published';
   practice: boolean;
+  practiceHidden: boolean;
   source: SourceInfo | null;
   validation: ValidationReport | null;
   validationState: ValidationState;
@@ -200,6 +207,8 @@ export interface WorkspaceQuestionDTO extends StatementDTO {
   starterCode: Partial<Record<LanguageId, string>>;
   drafts: DraftDTO[];
   points: number;
+  /** Editor autocompletion as the server decided it (contest rule, or the participant's choice). */
+  autocomplete: AutocompletePolicy;
 }
 
 export interface PracticeQuestionDTO {
@@ -211,6 +220,12 @@ export interface PracticeQuestionDTO {
   tags: string[];
   solved: boolean;
   attempted: boolean;
+  /** Finished contests the question was in (public ones, or ones this user took part in). */
+  fromContests: { id: number; name: string }[];
+}
+
+export interface PracticeWorkspaceDTO extends WorkspaceQuestionDTO {
+  fromContests: { id: number; name: string }[];
 }
 
 export interface ContestSummaryDTO {
@@ -248,6 +263,7 @@ export interface ContestRulesDTO {
   penaltyMinutes: number | null;
   recordIntegrity: boolean;
   leaderboardEnabled: boolean;
+  autocomplete: AutocompleteRule;
 }
 
 export interface ContestLobbyDTO extends ContestRulesDTO {

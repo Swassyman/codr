@@ -5,7 +5,7 @@ import type { TestCaseDTO } from '../../../../shared/api';
 import type { ReferenceSolution } from '../../../../shared/types';
 import { api, errorMessage } from '../../../lib/api';
 import { useRun } from '../../../lib/runs';
-import { useRuntimes } from '../../../lib/runtimes';
+import { useLanguageLabel, useRuntimes } from '../../../lib/runtimes';
 import { cn } from '../../../lib/cn';
 import { CodeEditor } from '../../../components/CodeEditor';
 import { Button, Dialog, ErrorNote, Select, Spinner } from '../../../components/ui';
@@ -31,6 +31,7 @@ export function GenerateOutputsDialog({
   onApplied: () => void;
 }) {
   const runtimes = useRuntimes();
+  const languageLabel = useLanguageLabel();
   const defaultLanguage = reference?.language ?? allowedLanguages.find((l) => runtimes.installed.has(l)) ?? 'cpp';
   const [language, setLanguage] = useState<LanguageId>(defaultLanguage);
   const [code, setCode] = useState(reference?.code ?? LANGUAGES[defaultLanguage].template);
@@ -112,7 +113,7 @@ export function GenerateOutputsDialog({
             >
               {LANGUAGE_IDS.filter((l) => runtimes.installed.has(l)).map((l) => (
                 <option key={l} value={l}>
-                  {LANGUAGES[l].label}
+                  {languageLabel(l)}
                 </option>
               ))}
             </Select>

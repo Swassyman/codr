@@ -2,12 +2,14 @@
 // client (labels, Monaco modes, starter templates). Engine-specific details for
 // Piston live next to the generic fields so a different Runner can ignore them.
 
-export const LANGUAGE_IDS = ['cpp', 'c', 'python', 'java', 'javascript', 'go', 'rust'] as const;
+export const LANGUAGE_IDS = ['cpp', 'c', 'python', 'java', 'javascript', 'typescript', 'go', 'rust', 'zig'] as const;
 export type LanguageId = (typeof LANGUAGE_IDS)[number];
 
 export interface LanguageInfo {
   id: LanguageId;
   label: string;
+  /** Compiler or runtime named next to the installed version, e.g. "gcc" in "C++17 (gcc 10.2.0)". */
+  toolchain: string;
   /** Monaco language id used for syntax highlighting. */
   monaco: string;
   /** Default multipliers applied to a question's limits unless it overrides them. */
@@ -27,6 +29,7 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   cpp: {
     id: 'cpp',
     label: 'C++17',
+    toolchain: 'gcc',
     monaco: 'cpp',
     timeMultiplier: 1,
     memoryMultiplier: 1,
@@ -39,6 +42,7 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   c: {
     id: 'c',
     label: 'C11',
+    toolchain: 'gcc',
     monaco: 'c',
     timeMultiplier: 1,
     memoryMultiplier: 1,
@@ -50,6 +54,7 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   python: {
     id: 'python',
     label: 'Python 3',
+    toolchain: 'CPython',
     monaco: 'python',
     timeMultiplier: 3,
     memoryMultiplier: 1.5,
@@ -61,6 +66,7 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   java: {
     id: 'java',
     label: 'Java',
+    toolchain: 'OpenJDK',
     monaco: 'java',
     timeMultiplier: 2,
     memoryMultiplier: 2,
@@ -74,7 +80,8 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   },
   javascript: {
     id: 'javascript',
-    label: 'JavaScript (Node.js)',
+    label: 'JavaScript',
+    toolchain: 'Node.js',
     monaco: 'javascript',
     timeMultiplier: 2,
     memoryMultiplier: 1.5,
@@ -83,9 +90,25 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
     hello: 'const s = require("fs").readFileSync(0, "utf8").split("\\n")[0];\nconsole.log("hello " + s);\n',
     template: 'const input = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);\n\n',
   },
+  typescript: {
+    id: 'typescript',
+    label: 'TypeScript',
+    toolchain: 'tsc',
+    monaco: 'typescript',
+    // Compiled by tsc in its own stage (not counted against the limit), then run by Node.js like JavaScript.
+    timeMultiplier: 2,
+    memoryMultiplier: 1.5,
+    timeOverheadMs: 0,
+    // Piston's typescript package compiles with tsc and runs the output on its bundled Node.js;
+    // runner/Dockerfile overrides its compile step (ES2022 target, Node.js globals declared).
+    piston: { language: 'typescript', package: 'typescript', fileName: 'main' },
+    hello: 'const s: string = require("fs").readFileSync(0, "utf8").split("\\n")[0];\nconsole.log("hello " + s);\n',
+    template: 'const input: string[] = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);\n\n',
+  },
   go: {
     id: 'go',
     label: 'Go',
+    toolchain: 'go',
     monaco: 'go',
     timeMultiplier: 1.5,
     memoryMultiplier: 1.5,
@@ -97,6 +120,7 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   rust: {
     id: 'rust',
     label: 'Rust',
+    toolchain: 'rustc',
     monaco: 'rust',
     timeMultiplier: 1,
     memoryMultiplier: 1,
@@ -105,10 +129,34 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
     hello: 'use std::io;\nfn main() {\n    let mut s = String::new();\n    io::stdin().read_line(&mut s).unwrap();\n    println!("hello {}", s.trim());\n}\n',
     template: 'use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n}\n',
   },
+  zig: {
+    id: 'zig',
+    label: 'Zig',
+    toolchain: 'zig',
+    monaco: 'zig',
+    timeMultiplier: 1,
+    memoryMultiplier: 1,
+    timeOverheadMs: 0,
+    piston: { language: 'zig', package: 'zig', fileName: 'main.zig' },
+    hello:
+      'const std = @import("std");\n\npub fn main() !void {\n    var buf: [256]u8 = undefined;\n    const line = (try std.io.getStdIn().reader().readUntilDelimiterOrEof(&buf, \'\\n\')) orelse "";\n    try std.io.getStdOut().writer().print("hello {s}\\n", .{line});\n}\n',
+    template:
+      'const std = @import("std");\n\npub fn main() !void {\n    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);\n    defer arena.deinit();\n    const input = try std.io.getStdIn().reader().readAllAlloc(arena.allocator(), 1 << 30);\n    var tokens = std.mem.tokenize(u8, input, " \\t\\r\\n");\n    _ = tokens;\n\n    var out = std.io.bufferedWriter(std.io.getStdOut().writer());\n    defer out.flush() catch {};\n    const w = out.writer();\n    _ = w;\n}\n',
+  },
 };
 
 /** Languages installed by the default runner setup. */
-export const DEFAULT_LANGUAGES: LanguageId[] = ['cpp', 'c', 'python', 'java', 'javascript'];
+export const DEFAULT_LANGUAGES: LanguageId[] = ['cpp', 'c', 'python', 'java', 'javascript', 'typescript', 'zig'];
+
+/**
+ * How a language is named everywhere in the UI: "C++17 (gcc 10.2.0)". The
+ * version is whatever the runner has installed; without it (runner
+ * unreachable) the label still names the toolchain: "C++17 (gcc)".
+ */
+export function languageLabel(language: LanguageId, version?: string | null) {
+  const info = LANGUAGES[language];
+  return `${info.label} (${info.toolchain}${version ? ` ${version}` : ''})`;
+}
 
 export function isLanguageId(value: unknown): value is LanguageId {
   return typeof value === 'string' && (LANGUAGE_IDS as readonly string[]).includes(value);

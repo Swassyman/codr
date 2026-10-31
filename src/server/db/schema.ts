@@ -14,6 +14,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import type { LanguageId } from '../../shared/languages';
+import { AUTOCOMPLETE_RULES } from '../../shared/types';
 import type {
   CheckerConfig,
   LanguageLimits,
@@ -37,6 +38,7 @@ export const timingModeEnum = pgEnum('timing_mode', ['per_question', 'fixed_wind
 export const revealEnum = pgEnum('reveal_hidden', ['during', 'after']);
 export const verdictDetailEnum = pgEnum('verdict_detail', ['per_test', 'summary']);
 export const contestScoringEnum = pgEnum('contest_scoring', ['all_or_nothing', 'partial']);
+export const autocompleteEnum = pgEnum('autocomplete_rule', AUTOCOMPLETE_RULES);
 export const jobStatusEnum = pgEnum('job_status', ['queued', 'running', 'done', 'failed']);
 export const runKindEnum = pgEnum('run_kind', ['custom', 'samples', 'generate', 'validate']);
 
@@ -96,6 +98,8 @@ export const questions = pgTable(
     status: publishStatusEnum().notNull().default('draft'),
     /** Listed in the practice bank (still hidden while it is in an unfinished contest). */
     practice: boolean().notNull().default(false),
+    /** Never in the practice bank, not even after its contests end (questions from finished contests are listed otherwise). */
+    practiceHidden: boolean().notNull().default(false),
     source: jsonb().$type<SourceInfo | null>(),
     validation: jsonb().$type<ValidationReport | null>(),
     /** Bumped whenever tests, limits, checker or the reference solution change. */
@@ -159,6 +163,8 @@ export const contests = pgTable(
     /** Freeze the public leaderboard this many minutes before the end. */
     leaderboardFreezeMinutes: integer(),
     recordIntegrity: boolean().notNull().default(false),
+    /** Editor autocompletion; the workspace exposes it and the editor applies it. */
+    autocomplete: autocompleteEnum().notNull().default('user_choice'),
     status: publishStatusEnum().notNull().default('draft'),
     createdBy: integer().references(() => users.id, { onDelete: 'set null' }),
     createdAt: ts().notNull().defaultNow(),

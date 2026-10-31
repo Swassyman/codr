@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify';
+import type { AutocompletePolicy } from '../../shared/autocomplete';
 import { LANGUAGE_IDS, type LanguageId } from '../../shared/languages';
 import type { StatementDTO, WorkspaceQuestionDTO } from '../../shared/api';
 import type { Question } from '../db/schema';
@@ -29,7 +30,13 @@ export function allowedLanguages(q: Pick<Question, 'allowedLanguages'>, contestO
   return contestOverride.length ? base.filter((l) => contestOverride.includes(l)) : base;
 }
 
-export function toWorkspace(q: Question, languages: LanguageId[], drafts: WorkspaceQuestionDTO['drafts'], points: number): WorkspaceQuestionDTO {
+export function toWorkspace(
+  q: Question,
+  languages: LanguageId[],
+  drafts: WorkspaceQuestionDTO['drafts'],
+  points: number,
+  autocomplete: AutocompletePolicy,
+): WorkspaceQuestionDTO {
   return {
     ...toStatement(q),
     id: q.id,
@@ -39,6 +46,7 @@ export function toWorkspace(q: Question, languages: LanguageId[], drafts: Worksp
     starterCode: q.starterCode,
     drafts,
     points,
+    autocomplete,
   };
 }
 
