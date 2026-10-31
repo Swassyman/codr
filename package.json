@@ -56,6 +56,8 @@
     "katex": "^0.19.1",
     "lucide-react": "^1.62.0",
     "monaco-editor": "^0.57.0",
+    "monaco-emacs": "^0.3.0",
+    "monaco-vim": "^0.4.4",
     "pino-pretty": "^13.2.0",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",

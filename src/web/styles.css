@@ -254,6 +254,40 @@
 }
 .fuse[data-level="critical"] {
   background: var(--bad);
+  animation: fuse-flash 1s ease-in-out infinite;
+}
+@keyframes fuse-flash {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* A hidden clock forced into view in the last minute pulses a few times. */
+.clock-forced {
+  animation: clock-pulse 1s ease-in-out 3;
+}
+@keyframes clock-pulse {
+  50% {
+    box-shadow: 0 0 0 3px var(--bad-soft);
+  }
+}
+
+/* Vim's status line: its ":" command input should look like part of the bar. */
+.codr-keymap-status input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+.codr-keymap-status > span:nth-child(2) {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.codr-keymap-status .vim-notification {
+  color: var(--warn);
 }
 
 /* Native number inputs: hide spinners for a calmer form. */

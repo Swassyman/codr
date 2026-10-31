@@ -5,6 +5,7 @@ Codr is a self-hosted platform for running competitive coding contests on a loca
 - [Quick start](#quick-start)
 - [Writing a question](#writing-a-question)
 - [Running a contest](#running-a-contest)
+- [The workspace](#the-workspace)
 - [Importing questions](#importing-questions)
 - [Architecture](#architecture)
 - [Configuration](#configuration)
@@ -84,6 +85,22 @@ The practice bank shows a published question when no published contest containin
 So once a contest is over, all of its questions become practice material, tagged "from *contest name*". The tag names only public contests and contests the viewer took part in. "Finished" is the last moment anyone can still work: the end time, or in personal-window mode the entry cutoff plus the window. Participants who finish early do not end it. Draft contests are ignored. Visibility is computed for each request, so nothing is written when a contest ends.
 
 To keep a question out of practice for good, for example one you plan to reuse, turn on **Keep out of practice** in its settings (`practiceHidden`). It overrides both rules.
+
+## The workspace
+
+Participants solve in one screen, in contests and in practice: the statement, the editor, and a panel for custom input, example results and submissions.
+
+- **Zen mode** (`Alt+Z`, `⌥Z` on macOS, or the focus button in the editor toolbar) hides the header, the statement and the run panels. What is left is the editor and a slim bar with the language, the timer, Run, Submit and **Exit zen**. **Problem** (`Alt+P`) slides the statement over the editor without leaving zen, with the run results, the submissions and the question navigator next to it; Run and Submit open it on their results without taking focus from the editor. `Esc` leaves zen when focus is outside the editor; an open sheet or menu closes first, and inside the editor `Esc` stays with the editor (Vim needs it). Zen is remembered per account on each device, so it stays on across questions and reloads.
+- **Fullscreen** (`Alt+Shift+F` or the toolbar button) uses the browser's fullscreen, and `Esc` leaves it as usual. Zen and fullscreen are independent and combine: each shortcut changes only its own state. Leaving the solve page leaves fullscreen; switching questions does not.
+- **Editor settings** (the sliders button in the editor toolbar):
+  - Key bindings: default, Vim or Emacs. Vim shows its mode and `:` command line under the editor, Emacs its pending prefix keys.
+  - Tab width: 2, 4 or 8. Go always indents with tabs, shown at that width.
+  - Editor theme: Codr (follows the app's light or dark theme), GitHub Light, GitHub Dark, Solarized Light, Solarized Dark, One Dark or Dracula.
+  - Always show contest timer.
+
+  Changes apply immediately, keeping the cursor, undo history and draft, and are remembered per account on each device. They change presentation and input only: the autocomplete rule, paste recording, autosave and every deadline work the same in every setting and layout.
+- **Shortcuts**: Run `Ctrl+Enter`, Submit `Ctrl+Shift+Enter` (`⌘` instead of `Ctrl` on macOS), and the ones above. They work with Vim and Emacs bindings too, which never see them.
+- **Contest timer**: hidden behind a dimmed clock while you work. Hover over it or focus it to see the time; click it (or press Enter or Space) to keep it visible. In the last minute it shows whatever you chose, and the fuse along the top edge flashes. The fuse itself is always visible and turns amber with five minutes left. Turn on **Always show contest timer** to see the clock all the time.
 
 ## Importing questions
 
@@ -173,9 +190,9 @@ npm run typecheck
 npm test             # unit + integration tests (uses a codr_test database on the dev Postgres)
 ```
 
-- Unit tests (`tests/unit`): timing and lock rules, practice visibility, autocomplete rule resolution, checkers, scoring, runner result mapping and language catalog, test import parsing, importer parsing.
+- Unit tests (`tests/unit`): timing and lock rules, practice visibility, autocomplete rule resolution, checkers, scoring, runner result mapping and language catalog, test import parsing, importer parsing, editor settings parsing and storage, timer visibility, workspace shortcuts, and editor theme contrast and token coverage (Zig included).
 - Integration tests (`tests/integration`): the real API against Postgres with a deterministic fake runner (auth, CSRF, authoring, the submit → judge → verdict flow, contests in every timing mode, view-once across tabs and devices, auto-submit at expiry, reveal rules, guests, imports, user management, practice visibility before, during and after contests, the autocomplete rule, Zig and TypeScript). When the dev runner is reachable, extra tests run real programs in the sandbox (TLE, MLE, no network, large inputs, real judging including Zig and TypeScript, seed validation). The TypeScript test needs a runner built from the current `runner/Dockerfile` (`docker compose up -d --build runner`). Point the tests at another runner with `RUNNER_URL`.
-- End-to-end (`e2e/`): a participant going through a view-once contest in a real browser. Against a running stack: `npx playwright install chromium && E2E_BASE_URL=http://localhost:3000 npx playwright test` (or set `CHROME_PATH` to a local Chrome).
+- End-to-end (`e2e/`): a participant going through a view-once contest, the autocomplete rule, and zen, fullscreen, editor settings and the hidden contest timer, in a real browser. Against a running stack: `npx playwright install chromium && E2E_BASE_URL=http://localhost:3000 npx playwright test` (or set `CHROME_PATH` to a local Chrome).
 
 Project layout: `src/shared` (code used by both sides: schemas, timing, checkers, scoring, languages), `src/server` (API, jobs, runner, importers, seed), `src/web` (React app), `drizzle/` (migrations), `runner/` (runner image), `scripts/` (seed, dataset import), `tests/`, `e2e/`.
 
@@ -186,6 +203,10 @@ Project layout: `src/shared` (code used by both sides: schemas, timing, checkers
 - TypeScript: compiled by `tsc` (Piston's `typescript` package, 5.0.3) for its bundled Node.js 18, then run like JavaScript with the same limits. Read input with `require("fs").readFileSync(0, "utf8")`, as in the starter template. Type errors are compilation errors, and compilation runs in its own stage, so it does not count against the time limit. Deno's `typescript` runtime is never used. Pinning `typescript` below 4.6 breaks the compile step, which targets ES2022.
 - Zig: Piston's `zig` package (0.10.1), built with `-O ReleaseSafe`, so overflows and out-of-bounds accesses are runtime errors. A compile takes about 5 s of CPU and happens for every test case, like every other compiled language, so Zig submissions take longer to judge.
 - Autocomplete is a contest rule (participant chooses, always off, always on). Practice always lets the participant choose, and the editor starts with it off.
+- Editor preferences (key bindings, tab width, theme, always show timer, zen) are kept in the browser per account, like the autocomplete choice; the server stores none of them. They only affect how the editor looks and takes input. Vim and Emacs bindings (`monaco-vim`, `monaco-emacs`) load the first time someone picks them.
+- The contest timer is hidden by default while solving and always shown in the last minute (`clockLevel` "critical", 60 s, and after time is up). The fuse stays visible as the ambient warning: it tells you roughly how much is left without numbers to watch, and it turns amber at five minutes, before the clock is forced into view.
+- Fullscreen covers the whole page, not just the workspace element, so dialogs (time up, leaving a view-once question) and notifications stay visible in fullscreen.
+- Editor themes keep code text at WCAG AA contrast (4.5:1) and line numbers at 3:1. Well-known palettes keep their hues, but colours that fell short (Solarized accents, Dracula and One Dark comments) are lighter or darker than the originals.
 - Samples are judged first in every submission and are worth no points.
 - Practice shows published questions marked for practice, plus every question of a finished contest, except while a published contest containing them has not finished, and never questions kept out of practice. See [Practice](#practice).
 - Personal-window mode: the contest end is the entry cutoff; each participant gets the full duration from entering.

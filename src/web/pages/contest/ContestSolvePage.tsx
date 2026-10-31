@@ -8,9 +8,11 @@ import type { ContestQuestionDTO, ContestQuestionStateDTO } from '../../../share
 import { api, ApiError, errorMessage } from '../../lib/api';
 import { useUser } from '../../lib/auth';
 import { useContestLobby, useContestState, useIntegrityTracker } from '../../lib/contest';
+import { useEditorSettings } from '../../lib/editor-settings';
+import { useLeaveFullscreenOnUnmount } from '../../lib/fullscreen';
 import { serverClock } from '../../lib/server-time';
 import { Wordmark, ThemeToggle } from '../../components/AppShell';
-import { ContestClock, Fuse } from '../../components/contest/Clock';
+import { DeadlineWatcher, Fuse, QuestionClock } from '../../components/contest/Clock';
 import { Navigator } from '../../components/contest/Navigator';
 import { Button, ConfirmDialog, Dialog, Spinner } from '../../components/ui';
 import { Workspace } from '../../components/workspace/Workspace';
@@ -22,6 +24,8 @@ export default function ContestSolvePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useUser();
+  const [editorSettings] = useEditorSettings(user?.id ?? null);
+  useLeaveFullscreenOnUnmount();
   const lobby = useContestLobby(id);
   const state = useContestState(id, true);
   const c = lobby.data;
@@ -107,11 +111,15 @@ export default function ContestSolvePage() {
       {s && <Navigator questions={s.questions} activeId={questionId} onSelect={go} />}
     </div>
   );
+  const clock = deadline && !s?.over && (
+    <QuestionClock
+      deadline={deadline}
+      label={c?.timingMode === 'per_question' ? `Time left for question ${letter}` : 'Time left in the contest'}
+      alwaysShow={editorSettings.alwaysShowTimer}
+    />
+  );
   const barRight = (
     <>
-      {deadline && !s?.over && (
-        <ContestClock deadline={deadline} label={c?.timingMode === 'per_question' ? `Time left for question ${letter}` : 'Time left in the contest'} onExpire={onExpire} />
-      )}
       {!s?.over && (
         <Button size="sm" variant="ghost" onClick={() => setConfirmFinish(true)}>
           Finish
@@ -208,6 +216,7 @@ export default function ContestSolvePage() {
         endpoints={{ draft: `${base}/draft`, run: `${base}/run`, submit: `${base}/submit`, submissions: `${base}/submissions` }}
         bar={bar}
         barRight={barRight}
+        clock={clock}
         fuse={<Fuse start={fuseStart} deadline={s?.over ? null : deadline} />}
         locked={lockedMessage}
         deadline={deadline}
@@ -218,6 +227,8 @@ export default function ContestSolvePage() {
           if (err.code === 'question_expired' && c?.timingMode === 'per_question') setTimeUpFor(q.id);
         }}
       />
+      {/* Expiry is watched here rather than by the clock, which moves between the header and the zen bar. */}
+      {deadline && !s?.over && <DeadlineWatcher deadline={deadline} onExpire={onExpire} />}
       {dialogs}
     </>
   );

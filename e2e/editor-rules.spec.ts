@@ -40,6 +40,9 @@ async function contest(call: Call, fields: Record<string, unknown>, questionIds:
   return id as number;
 }
 
+// Labels gain their versions when /api/runtimes answers, which can be after the editor appears.
+const languageOptions = (page: Page) => page.getByRole('combobox', { name: 'Language' }).locator('option').allTextContents();
+
 const suggestions = (page: Page) => page.locator('.monaco-editor .suggest-widget.visible .monaco-list-row');
 
 async function typeInEditor(page: Page, text: string) {
@@ -121,9 +124,8 @@ test('autocomplete follows the contest rule, and practice lets the participant c
   });
 
   await test.step('language labels carry the installed version', async () => {
-    const options = await page.getByRole('combobox', { name: 'Language' }).locator('option').allTextContents();
-    expect(options).toContainEqual(expect.stringMatching(/^Python 3 \(CPython \d+\.\d+/));
-    for (const label of options) expect(label).toMatch(/ \(\S+ \d+\.\d+[^)]*\)$/);
+    await expect.poll(() => languageOptions(page)).toContainEqual(expect.stringMatching(/^Python 3 \(CPython \d+\.\d+/));
+    for (const label of await languageOptions(page)) expect(label).toMatch(/ \(\S+ \d+\.\d+[^)]*\)$/);
   });
 
   await test.step('practice starts with autocomplete off and remembers turning it on', async () => {
@@ -153,8 +155,7 @@ test('autocomplete follows the contest rule, and practice lets the participant c
     await row.click();
     await expect(page).toHaveURL(new RegExp(`/practice/${pastQuestionSlug}$`));
     await expect(page.getByText(`from ${pastContestName}`)).toBeVisible();
-    const options = await page.getByRole('combobox', { name: 'Language' }).locator('option').allTextContents();
-    expect(options).toContainEqual(expect.stringMatching(/^TypeScript \(tsc \d+\.\d+/));
-    expect(options).toContainEqual(expect.stringMatching(/^Zig \(zig \d+\.\d+/));
+    await expect.poll(() => languageOptions(page)).toContainEqual(expect.stringMatching(/^TypeScript \(tsc \d+\.\d+/));
+    expect(await languageOptions(page)).toContainEqual(expect.stringMatching(/^Zig \(zig \d+\.\d+/));
   });
 });

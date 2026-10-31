@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { PracticeWorkspaceDTO } from '../../../shared/api';
 import { api, errorMessage } from '../../lib/api';
 import { useUser } from '../../lib/auth';
+import { useLeaveFullscreenOnUnmount } from '../../lib/fullscreen';
 import { AppShell, Wordmark } from '../../components/AppShell';
 import { ErrorNote, Spinner } from '../../components/ui';
 import { Workspace } from '../../components/workspace/Workspace';
@@ -12,6 +13,7 @@ import { FromContest } from '../../components/FromContest';
 export default function PracticeSolvePage() {
   const { slug } = useParams();
   const user = useUser();
+  useLeaveFullscreenOnUnmount();
   const base = `/api/practice/questions/${encodeURIComponent(slug ?? '')}`;
   const question = useQuery({
     queryKey: ['practice-question', slug],
