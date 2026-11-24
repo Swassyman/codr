@@ -1,0 +1,15 @@
+- autocompletion -> higher priority of contest rules. if contest allows, then users have the option to turn it off/on
+- after contest, all questions must be available to users to practice in the practice section.
+- add zig, ts. mention each language version.
+
+- [x] add full screen and editor zen mode
+- [x] editor settings -> key bindings (vim | emacs), tab width, editor themes
+- [x] hide timer during a question, also reveal on hover/click
+
+- [x] leetcode (bypass)  (dataset import; leetcode.com itself is not scraped, see README)
+- [x] append input parsing qn wise to the initial code
+- [x] frontend ux (admin dash) revamped
+
+- algorithm analysis in the previously mentioned report
+- contest report for users, sending to their mail. a detailed analysis of their performance, a video(?) preview of them coding. doesn't have to be an actual video, more like a slideshow. something like the monaco-recorder like how hackerrearth does
+- rename to codevars
